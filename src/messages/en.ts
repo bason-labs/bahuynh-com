@@ -24,6 +24,14 @@ export const en: Messages = {
     privacy: "Privacy",
   },
   hero: {
-    title: "Karaoke for the whole group.",
+    titleLead: "Karaoke for",
+    titleAccent: "the whole group.",
+    lede: "The TV is the stage, phones are the mic and the remote, and an AI host introduces every song. A room is open in ten seconds, nothing to install.",
+    open: "Open a room",
+    film: "▶ Watch 36 sec",
+    platforms: "Web · TV · Projector",
+    free: "Free to start",
+    hint: "Drag to turn · tap to switch the mic on",
+    onAir: "On air",
   },
 };

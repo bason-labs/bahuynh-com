@@ -47,7 +47,7 @@ for (const { route, file, lang, h1 } of pages) {
   }
   const html = readFileSync(file, "utf8");
   if (!html.includes(`<html lang="${lang}"`)) errors.push(`${file} lacks <html lang="${lang}"`);
-  if (!html.includes(h1)) errors.push(`${file} lacks the h1 "${h1}"`);
+  if (!html.replace(/<!--.*?-->|<\/?em>/g, "").includes(h1)) errors.push(`${file} lacks the h1 "${h1}"`);
 
   const htmlGz = gz(Buffer.from(html));
   baseline.htmlGzKb[route] = +kb(htmlGz).toFixed(1);

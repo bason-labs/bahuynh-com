@@ -6,7 +6,7 @@ const pages = [
 ] as const;
 
 for (const { lang, h1 } of pages) {
-  for (const key of ["mobile", "desktop"] as const) {
+  for (const key of ["mobile", "tablet", "desktop"] as const) {
     test(`${lang} page at ${key}`, async ({ page }) => {
       await page.setViewportSize(VIEWPORTS[key]);
       await gotoPage(page, lang);
