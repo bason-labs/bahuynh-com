@@ -32,5 +32,18 @@ for (const lang of ["vi", "en"] as const) {
       await expect(hero.locator("i")).toHaveCount(0, { timeout: 3500 });
       await checkAxe(page);
     });
+
+    test(`axe finds no violation on ${lang} at ${key} with the film on its poster and playing`, async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS[key]);
+      await gotoPage(page, lang);
+      const film = page.locator("[data-film]");
+      await film.scrollIntoViewIfNeeded();
+      await checkAxe(page);
+      await film.getByRole("button", { name: lang === "vi" ? "Phát video" : "Play video", exact: true }).click();
+      await expect(film).toHaveAttribute("data-running", "true");
+      await page.waitForTimeout(800);
+      await checkAxe(page);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    });
   }
 }
