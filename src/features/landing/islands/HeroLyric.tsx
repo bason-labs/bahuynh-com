@@ -26,7 +26,7 @@ export function HeroLyric({ label, line }: { label: string; line: string }) {
   const sung = !live ? 0 : reduced ? words.length : sungCount(ticks * STEP_MS, words.length, STEP_MS);
 
   return (
-    <div className={styles.lyric} aria-hidden="true" data-lyric>
+    <div className={styles.lyric} aria-hidden="true">
       <span className={styles.lyricLabel}>{label}</span>
       {words.map((word, i) => (
         <Fragment key={i}>

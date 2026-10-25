@@ -30,8 +30,7 @@ for (const lang of ["vi", "en"] as const) {
       await expect(hero.getByText("On air").locator("..")).toHaveCSS("box-shadow", /rgba\(255, 74, 43, 0.45\)/);
       await expect(hero.locator('div[aria-hidden="true"]').last()).toHaveCSS("opacity", "1");
       await expect(hero.locator("i")).toHaveCount(0, { timeout: 3500 });
-      // Q-0001-26: the aria-hidden lyric keeps its 35 % unsung words, so its contrast is not checked.
-      await checkAxe(page, "[data-lyric]");
+      await checkAxe(page);
     });
   }
 }

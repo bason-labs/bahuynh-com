@@ -37,9 +37,10 @@ export async function gotoPage(page: Page, lang: keyof typeof PATHS) {
   return response;
 }
 
-/** Runs axe with the WCAG 2.2 AA tags on the current page and expects 0 violations; `exclude` skips a selector. */
-export async function checkAxe(page: Page, exclude?: string) {
-  const builder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]);
-  const results = await (exclude ? builder.exclude(exclude) : builder).analyze();
+/** Runs axe with the WCAG 2.2 AA tags on the current page and expects 0 violations. */
+export async function checkAxe(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
   expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
 }

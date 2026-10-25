@@ -342,6 +342,7 @@ for (const lang of ["vi", "en"] as const) {
       await expect(label).toHaveCSS("color", RED);
       await expect(label).toHaveCSS("font-family", /mono/i);
       await expect(lyric).toContainText(l.line);
+      await expect(lyric.getByText(l.line.split(" ").at(-1)!, { exact: true })).toHaveCSS("color", "rgba(243, 239, 232, 0.5)");
       const words = lyric.getByText(/\S/).filter({ hasNot: page.locator("span") });
       await expect(words).toHaveCount(14);
       expect(l.line.split(" ")).toHaveLength(13);
@@ -395,6 +396,7 @@ for (const lang of ["vi", "en"] as const) {
       expect(lb.y + lb.height).toBeLessThanOrEqual(h1.y);
       expect(lb.x).toBeLessThan(h1.x + 40);
       await expect(lyric).toHaveCSS("text-align", "left");
+      await expect(lyric.getByText(l.line.split(" ").at(-1)!, { exact: true })).toHaveCSS("color", "rgba(243, 239, 232, 0.5)");
       await expect(hero.getByText(c.hint, { exact: true }).locator("..")).toHaveCSS("opacity", "0");
 
       await page.setViewportSize(VIEWPORTS.desktop);
