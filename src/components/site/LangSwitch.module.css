@@ -1,0 +1,39 @@
+.lang {
+  display: flex;
+  border: 1px solid var(--line-2);
+}
+
+.lang button,
+.lang a {
+  display: block;
+  padding: 6px 10px;
+  color: var(--muted);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.lang button {
+  cursor: default;
+}
+
+.lang a:hover {
+  color: var(--fg);
+}
+
+.lang [aria-current="true"] {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
