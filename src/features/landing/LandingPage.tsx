@@ -2,6 +2,7 @@ import { Footer, Grain, SiteNav } from "@/components/site";
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/messages";
 import { Hero } from "./sections/Hero";
+import { Marquee } from "./sections/Marquee";
 
 export function LandingPage({ locale }: { locale: Locale }) {
   const t = getMessages(locale);
@@ -18,6 +19,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
       <SiteNav locale={locale} links={links} />
       <main>
         <Hero locale={locale} />
+        <Marquee locale={locale} />
       </main>
       <Footer locale={locale} />
     </>

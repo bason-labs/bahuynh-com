@@ -1,0 +1,31 @@
+.marq {
+  border-block: 1px solid var(--line);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 16px 0;
+  background: var(--bg);
+}
+
+.row {
+  display: inline-block;
+  animation: marq 40s linear infinite;
+}
+
+.row span {
+  font: 800 clamp(18px, 2vw, 26px) / 1 var(--display);
+  font-variation-settings: "wdth" 125;
+  text-transform: uppercase;
+  margin-right: 28px;
+}
+
+.row .s {
+  color: var(--air);
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+@keyframes marq {
+  to {
+    transform: translateX(-50%);
+  }
+}
