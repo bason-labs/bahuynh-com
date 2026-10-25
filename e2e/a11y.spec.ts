@@ -1,3 +1,4 @@
+import { expectGl, throttleFrames, withoutWebGl } from "./mic";
 import { checkAxe, expect, gotoPage, test, VIEWPORTS } from "./support";
 
 // Later specs import checkAxe from ./support; it is re-exported here for the ticket's interface.
@@ -21,6 +22,7 @@ for (const lang of ["vi", "en"] as const) {
     });
 
     test(`axe finds no violation on ${lang} at ${key} with the hero live`, async ({ page }) => {
+      await withoutWebGl(page);
       await page.setViewportSize(VIEWPORTS[key]);
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
@@ -30,6 +32,19 @@ for (const lang of ["vi", "en"] as const) {
       await expect(hero.getByText("On air").locator("..")).toHaveCSS("box-shadow", /rgba\(255, 74, 43, 0.45\)/);
       await expect(hero.locator('div[aria-hidden="true"]').last()).toHaveCSS("opacity", "1");
       await expect(hero.locator("i")).toHaveCount(0, { timeout: 3500 });
+      await checkAxe(page);
+    });
+  }
+}
+
+// Last, so the software-WebGL start-ups do not overlap the first tests of the other specs.
+for (const lang of ["vi", "en"] as const) {
+  for (const key of ["mobile", "tablet", "desktop"] as const) {
+    test(`axe finds no violation on ${lang} at ${key} with the 3D mic loaded`, async ({ page }) => {
+      await throttleFrames(page);
+      await page.setViewportSize(VIEWPORTS[key]);
+      await gotoPage(page, lang);
+      await expectGl(page, "3d");
       await checkAxe(page);
     });
   }

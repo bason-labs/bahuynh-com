@@ -7,7 +7,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type MutableRefObject,
   type PointerEvent,
   type ReactNode,
 } from "react";
@@ -19,10 +18,14 @@ import { CrowdCanvas, type CrowdColors } from "./CrowdCanvas";
 
 export type Point = { x: number; y: number };
 
+export type GlState = "loading" | "3d" | "fallback";
+
 type HeroStageValue = {
   live: boolean;
-  /** Ring origin in hero coordinates; the 3D mic replaces it with its projected grille. */
-  getGrillePoint: MutableRefObject<() => Point>;
+  /** Reported by the mic loader: `3d` after the first drawn frame, `fallback` when the 3D mic cannot run. */
+  setGl: (state: GlState) => void;
+  /** Replaces the ring origin (hero coordinates) with the 3D mic's projected grille; null restores the CSS grille. */
+  setGrillePoint: (point: (() => Point) | null) => void;
 };
 
 const HeroStageContext = createContext<HeroStageValue | null>(null);
@@ -48,17 +51,25 @@ type Ring = { id: number; x: number; y: number; delay: number };
 
 export function HeroStage({ micLabel, children }: { micLabel: string; children: ReactNode }) {
   const [live, setLive] = useState(false);
+  const [gl, setGl] = useState<GlState>("loading");
   const [rings, setRings] = useState<Ring[]>([]);
   const reduced = useReducedMotion();
   const heroRef = useRef<HTMLElement>(null);
   const downX = useRef<number | null>(null);
   const nextId = useRef(0);
   const timers = useRef(new Set<number>());
-  const getGrillePoint = useRef<() => Point>(() => {
+  const cssGrillePoint = useCallback((): Point => {
     const hero = heroRef.current!.getBoundingClientRect();
     const mic = heroRef.current!.querySelector("[data-mic]")!.getBoundingClientRect();
     return { x: mic.left - hero.left + GRILLE.x, y: mic.top - hero.top + GRILLE.y };
-  });
+  }, []);
+  const getGrillePoint = useRef(cssGrillePoint);
+  const setGrillePoint = useCallback(
+    (point: (() => Point) | null) => {
+      getGrillePoint.current = point ?? cssGrillePoint;
+    },
+    [cssGrillePoint],
+  );
 
   useEffect(() => {
     const pending = timers.current;
@@ -90,13 +101,13 @@ export function HeroStage({ micLabel, children }: { micLabel: string; children: 
   };
 
   return (
-    <HeroStageContext.Provider value={{ live, getGrillePoint }}>
+    <HeroStageContext.Provider value={{ live, setGl, setGrillePoint }}>
       <header
         ref={heroRef}
         className={styles.hero}
         id="top"
         data-live={String(live)}
-        data-gl="loading"
+        data-gl={gl}
       >
         <CrowdCanvas
           className={styles.crowd}
