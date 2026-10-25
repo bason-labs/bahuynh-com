@@ -20,7 +20,9 @@ export const beVietnamPro = Be_Vietnam_Pro({
 export const jetBrainsMono = JetBrains_Mono({
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500"],
-  display: "optional",
+  display: "swap",
+  adjustFontFallback: false,
+  fallback: ["ui-monospace", "Menlo", "Courier New", "monospace"],
   variable: "--font-jetbrains-mono",
   preload: false,
 });
