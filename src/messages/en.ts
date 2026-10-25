@@ -15,6 +15,9 @@ export const en: Messages = {
     vi: "Tiếng Việt",
     en: "English",
   },
+  motion: {
+    pause: "Pause motion",
+  },
   footer: {
     copyright: "© 2026 BS Kara · Ba Huynh",
     made: "Made in Saigon",

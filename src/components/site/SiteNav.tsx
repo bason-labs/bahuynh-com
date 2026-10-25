@@ -1,6 +1,7 @@
 import { APP_URL } from "@/lib/site";
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/messages";
+import { MotionToggle } from "./islands/MotionToggle";
 import { LangSwitch } from "./LangSwitch";
 import styles from "./SiteNav.module.css";
 
@@ -23,6 +24,7 @@ export function SiteNav({ locale, links }: { locale: Locale; links: NavLink[] })
       </ul>
       <span className={styles.gap} />
       <LangSwitch locale={locale} />
+      <MotionToggle label={t.motion.pause} />
       <a className={`btn solid ${styles.cta}`} href={APP_URL}>
         {t.nav.open}
       </a>

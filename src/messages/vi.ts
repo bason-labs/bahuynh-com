@@ -13,6 +13,9 @@ export const vi = {
     vi: "Tiếng Việt",
     en: "English",
   },
+  motion: {
+    pause: "Dừng chuyển động",
+  },
   footer: {
     copyright: "© 2026 BS Kara · Ba Huynh",
     made: "Làm ở Sài Gòn",
