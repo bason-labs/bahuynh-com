@@ -255,3 +255,33 @@ async function expectStillCrowdPaused(page: Page) {
   await page.waitForTimeout(300);
   expect(await crowdImage(page)).not.toBe(idle);
 }
+
+test("hero crowd stops drawing while off screen or in a hidden tab, and resumes", async ({ page }) => {
+  await countCrowdFrames(page);
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await gotoPage(page, "vi");
+  await page.evaluate(() => {
+    document.body.style.minHeight = "6000px";
+  });
+  const idleFor = async () => {
+    await page.waitForTimeout(300);
+    const frames = await crowdFrames(page);
+    await page.waitForTimeout(700);
+    return (await crowdFrames(page)) - frames;
+  };
+  expect(await idleFor()).toBeGreaterThan(5);
+  await page.evaluate(() => window.scrollTo(0, 3000));
+  expect(await idleFor()).toBe(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  expect(await idleFor()).toBeGreaterThan(5);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(await idleFor()).toBe(0);
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(await idleFor()).toBeGreaterThan(5);
+});

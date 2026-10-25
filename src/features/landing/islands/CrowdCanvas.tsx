@@ -24,7 +24,19 @@ export type CrowdCanvasProps = {
 
 type Ctx = CanvasRenderingContext2D;
 
-function drawPerson(ctx: Ctx, p: Person, base: number, t: number, heat: number, reduce: boolean, colors: CrowdColors) {
+/** Phone glow gradients drawn at the origin, keyed by colour and radius, so a frame allocates none. */
+type GlowCache = Map<string, CanvasGradient>;
+
+function drawPerson(
+  ctx: Ctx,
+  p: Person,
+  base: number,
+  t: number,
+  heat: number,
+  reduce: boolean,
+  colors: CrowdColors,
+  glows: GlowCache,
+) {
   const { raise, bobPx, glowRadiusScale } = crowdFrameParams(heat, t, reduce, p.ph);
   const s = p.s * p.h;
   const y = base + bobPx * p.s;
@@ -52,11 +64,21 @@ function drawPerson(ctx: Ctx, p: Person, base: number, t: number, heat: number, 
   ctx.lineTo(px, py + 8 * s);
   ctx.stroke();
   const reach = 60 * s * glowRadiusScale;
-  const g = ctx.createRadialGradient(px, py, 0, px, py, 46 * s * glowRadiusScale);
-  g.addColorStop(0, colors.phone(p.row, 0.5 + heat * 0.4));
-  g.addColorStop(1, PALETTE.clear);
+  const core = colors.phone(p.row, 0.5 + heat * 0.4);
+  const radius = 46 * s * glowRadiusScale;
+  const key = `${core}|${radius}`;
+  let g = glows.get(key);
+  if (!g) {
+    g = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+    g.addColorStop(0, core);
+    g.addColorStop(1, PALETTE.clear);
+    glows.set(key, g);
+  }
+  ctx.save();
+  ctx.translate(px, py);
   ctx.fillStyle = g;
-  ctx.fillRect(px - reach, py - reach, reach * 2, reach * 2);
+  ctx.fillRect(-reach, -reach, reach * 2, reach * 2);
+  ctx.restore();
   ctx.fillStyle = colors.phone(p.row, 0.95);
   ctx.fillRect(px - 5 * s, py - 8 * s, 10 * s, 16 * s);
 }
@@ -74,7 +96,9 @@ export function CrowdCanvas({ rows, gap, scale, rowLift, colors, heat, glow, cla
     start.current ??= performance.now();
     const t0 = start.current;
     let people: Person[] = [];
+    const glows: GlowCache = new Map();
     let raf = 0;
+    let onScreen = true;
 
     const draw = (now: number) => {
       const w = canvas.clientWidth;
@@ -88,27 +112,44 @@ export function CrowdCanvas({ rows, gap, scale, rowLift, colors, heat, glow, cla
       wash.addColorStop(1, PALETTE.clear);
       ctx.fillStyle = wash;
       ctx.fillRect(0, 0, w, h);
-      for (const p of people) drawPerson(ctx, p, h + 4 - p.row * rowLift, t, level, reduced, colors);
+      for (const p of people) drawPerson(ctx, p, h + 4 - p.row * rowLift, t, level, reduced, colors, glows);
     };
     const loop = (now: number) => {
       draw(now);
       raf = requestAnimationFrame(loop);
+    };
+    /** Animate only while the canvas is on screen and the tab is visible; otherwise draw nothing. */
+    const sync = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      if (!onScreen || document.hidden) return;
+      draw(performance.now());
+      if (!reduced) raf = requestAnimationFrame(loop);
     };
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio, 2);
       canvas.width = canvas.clientWidth * dpr;
       canvas.height = canvas.clientHeight * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      glows.clear();
       people = seedPeople(canvas.clientWidth, { rows, gap, scale });
       draw(performance.now());
     };
 
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
+    const visibility = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting;
+      sync();
+    });
+    visibility.observe(canvas);
+    document.addEventListener("visibilitychange", sync);
     resize();
     if (!reduced) raf = requestAnimationFrame(loop);
     return () => {
       observer.disconnect();
+      visibility.disconnect();
+      document.removeEventListener("visibilitychange", sync);
       cancelAnimationFrame(raf);
     };
   }, [rows, gap, scale, rowLift, colors, heat, glow, reduced]);

@@ -463,6 +463,33 @@ for (const lang of ["vi", "en"] as const) {
       await expect(hero).toHaveAttribute("data-live", "true");
     });
 
+    test("every hero text paints above the crowd canvas", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      await page.mouse.click(720, 300);
+      const hero = page.locator("header#top");
+      await expect(hero).toHaveAttribute("data-live", "true");
+      const above = await hero.evaluate((h) => {
+        const canvas = h.querySelector("canvas")!;
+        // The hero's direct child that holds `el`, and its z-index.
+        const top = (el: Element) => {
+          let n = el;
+          while (n.parentElement !== h) n = n.parentElement!;
+          return n;
+        };
+        const z = (el: Element) => Number(getComputedStyle(el).zIndex);
+        const paintsAbove = (el: Element) => {
+          const t = top(el);
+          const follows = !!(canvas.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING);
+          return z(t) > z(canvas) || (z(t) === z(canvas) && follows);
+        };
+        const texts = [...h.querySelectorAll("h1, .mono, p, span, a")].filter((el) => el.textContent?.trim());
+        // The BS KARA wordmark is backdrop art and stays below the crowd, as in the prototype.
+        return texts.filter((el) => !el.closest("[class*='word']") && !paintsAbove(el)).map((el) => el.textContent);
+      });
+      expect(above).toEqual([]);
+    });
+
     test("idle is warm at heat 0.00, live is red at 1.00, and it returns to warm", async ({ page }) => {
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
