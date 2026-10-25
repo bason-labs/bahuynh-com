@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, gotoPage, test, VIEWPORTS } from "./support";
 
 const copy = {
@@ -426,3 +427,62 @@ test.describe("touch swipe on the mic", () => {
     await expect(hero).toHaveAttribute("data-live", "false");
   });
 });
+
+/** Alpha-weighted mean colour of a row inside the glow, above the silhouettes and phones. */
+const crowdGlow = (page: Page) =>
+  page.locator("header#top canvas").evaluate((canvas: HTMLCanvasElement) => {
+    const w = canvas.width;
+    const d = canvas.getContext("2d")!.getImageData(0, Math.floor(canvas.height * 0.45), w, 1).data;
+    const sum = { r: 0, g: 0, b: 0, a: 0 };
+    for (let i = 0; i < d.length; i += 4) {
+      sum.r += d[i] * d[i + 3];
+      sum.g += d[i + 1] * d[i + 3];
+      sum.b += d[i + 2] * d[i + 3];
+      sum.a += d[i + 3];
+    }
+    return { r: sum.r / w, g: sum.g / w, b: sum.b / w, a: sum.a / w };
+  });
+
+for (const lang of ["vi", "en"] as const) {
+  test.describe(`hero crowd on ${lang}`, () => {
+    test("canvas covers the bottom 42 %, ignores pointers and is hidden from assistive tech", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const canvas = hero.locator("canvas");
+      await expect(canvas).toHaveCount(1);
+      await expect(canvas).toHaveAttribute("aria-hidden", "true");
+      await expect(canvas).toHaveCSS("pointer-events", "none");
+      const h = (await hero.boundingBox())!;
+      const c = (await canvas.boundingBox())!;
+      expect(c.height).toBeCloseTo(h.height * 0.42, 0);
+      expect(c.y + c.height).toBeCloseTo(h.y + h.height, 0);
+      expect(c.width).toBeCloseTo(h.width, 0);
+      // A click on the canvas reaches the mic control underneath and toggles live.
+      await page.mouse.click(c.x + c.width / 2, c.y + 10);
+      await expect(hero).toHaveAttribute("data-live", "true");
+    });
+
+    test("idle is warm at heat 0.00, live is red at 1.00, and it returns to warm", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const canvas = hero.locator("canvas");
+      await expect(canvas).toHaveAttribute("data-heat", "0.00");
+      await expect.poll(() => crowdGlow(page).then((p) => p.a)).toBeGreaterThan(0);
+      const idle = await crowdGlow(page);
+      expect(idle.r).toBeGreaterThanOrEqual(idle.g);
+      expect(idle.r).toBeGreaterThanOrEqual(idle.b);
+      expect(idle.r).toBeLessThan(idle.g * 2);
+      await page.mouse.click(720, 300);
+      await expect(canvas).toHaveAttribute("data-heat", "1.00");
+      await expect.poll(() => crowdGlow(page).then((p) => p.r)).toBeGreaterThan(idle.r * 1.5);
+      const live = await crowdGlow(page);
+      expect(live.r).toBeGreaterThan(live.g * 2);
+      expect(live.r).toBeGreaterThan(live.b * 2);
+      await page.mouse.click(720, 300);
+      await expect(canvas).toHaveAttribute("data-heat", "0.00");
+      await expect.poll(() => crowdGlow(page).then((p) => p.r / p.g)).toBeLessThan(2);
+    });
+  });
+}

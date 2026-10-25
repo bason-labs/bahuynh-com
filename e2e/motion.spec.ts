@@ -189,3 +189,69 @@ test("hero live state with the pause toggle pressed", async ({ page }) => {
   await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
   await expectStillLive(page);
 });
+
+const countCrowdFrames = (page: Page) =>
+  page.addInitScript(() => {
+    const w = window as unknown as { __crowdFrames: number };
+    w.__crowdFrames = 0;
+    const clear = CanvasRenderingContext2D.prototype.clearRect;
+    CanvasRenderingContext2D.prototype.clearRect = function (...args: Parameters<typeof clear>) {
+      w.__crowdFrames++;
+      return clear.apply(this, args);
+    };
+  });
+const crowdFrames = (page: Page) => page.evaluate(() => (window as unknown as { __crowdFrames: number }).__crowdFrames);
+const crowdImage = (page: Page) => page.locator("header#top canvas").evaluate((c: HTMLCanvasElement) => c.toDataURL());
+
+async function expectStillCrowd(page: Page) {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await gotoPage(page, "vi");
+  const canvas = page.locator("header#top canvas");
+  await expect(canvas).toHaveAttribute("data-heat", "0.00");
+  await page.waitForTimeout(300);
+  const idle = await crowdImage(page);
+  const frames = await crowdFrames(page);
+  await page.waitForTimeout(2000);
+  expect(await crowdFrames(page)).toBe(frames);
+  expect(await crowdImage(page)).toBe(idle);
+  await tapHero(page);
+  await expect(canvas).toHaveAttribute("data-heat", "1.00");
+  await page.waitForTimeout(300);
+  const live = await crowdImage(page);
+  expect(live).not.toBe(idle);
+  const liveFrames = await crowdFrames(page);
+  await page.waitForTimeout(2000);
+  expect(await crowdFrames(page)).toBe(liveFrames);
+  expect(await crowdImage(page)).toBe(live);
+}
+
+test.describe("hero crowd under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("draws a still frame per heat change and no continuous frames", async ({ page }) => {
+    await countCrowdFrames(page);
+    await expectStillCrowd(page);
+  });
+});
+
+test("hero crowd animates, then stands still with the pause toggle pressed", async ({ page }) => {
+  await countCrowdFrames(page);
+  await gotoPage(page, "vi");
+  const before = await crowdFrames(page);
+  await page.waitForTimeout(500);
+  expect(await crowdFrames(page)).toBeGreaterThan(before + 5);
+  await page.getByRole("navigation").getByRole("button", { name: names.vi, exact: true }).click();
+  await expectStillCrowdPaused(page);
+});
+
+async function expectStillCrowdPaused(page: Page) {
+  const canvas = page.locator("header#top canvas");
+  await page.waitForTimeout(300);
+  const idle = await crowdImage(page);
+  const frames = await crowdFrames(page);
+  await page.waitForTimeout(2000);
+  expect(await crowdFrames(page)).toBe(frames);
+  await tapHero(page);
+  await expect(canvas).toHaveAttribute("data-heat", "1.00");
+  await page.waitForTimeout(300);
+  expect(await crowdImage(page)).not.toBe(idle);
+}
