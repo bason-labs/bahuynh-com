@@ -30,7 +30,7 @@ function references(html) {
   for (const [tag] of html.matchAll(/<(?:script|link)\b[^>]*>/g)) {
     const url = attr(tag, tag.startsWith("<script") ? "src" : "href");
     if (!url?.startsWith("/")) continue;
-    if (/\snomodule\b/i.test(tag)) continue; // module-capable browsers never fetch it (Q-0001-7a)
+    if (/\snomodule\b/i.test(tag)) continue; // module-capable browsers never fetch it (Q-0001-20)
     const rel = attr(tag, "rel");
     if (tag.startsWith("<script") || (rel === "preload" && attr(tag, "as") === "script") || rel === "modulepreload") {
       scripts.add(url);
