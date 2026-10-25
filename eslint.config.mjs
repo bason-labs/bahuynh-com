@@ -17,7 +17,7 @@ const messagesBan = {
 const digits = Array.from({ length: 10 }, (_, i) => String(i));
 const libBanned = ["react", "react-dom", "next", "three"];
 const libPatterns = [
-  { group: ["react-dom/*", "next/*", "three/*"], message: "src/lib is pure (AD-10)." },
+  { group: ["react/*", "react-dom/*", "next/*", "three/*"], message: "src/lib is pure (AD-10)." },
 ];
 
 export default defineConfig([

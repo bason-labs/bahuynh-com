@@ -30,6 +30,7 @@ describe("boundary rules", () => {
   });
   it("keeps src/lib pure", async () => {
     expect(await ruleIds("src/lib/a.ts", 'import { useState } from "react";\nexport const a = useState;\n')).toContain("no-restricted-imports");
+    expect(await ruleIds("src/lib/a.ts", 'import { jsx } from "react/jsx-runtime";\nexport const a = jsx;\n')).toContain("no-restricted-imports");
     expect(await ruleIds("src/lib/a.ts", 'import Link from "next/link";\nexport const a = Link;\n')).toContain("no-restricted-imports");
     expect(await ruleIds("src/lib/a.ts", "export const w = window.innerWidth;\n")).toContain("no-restricted-globals");
     expect(await ruleIds("src/lib/a.ts", "export const d = document.title;\n")).toContain("no-restricted-globals");
