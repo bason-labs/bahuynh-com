@@ -33,6 +33,9 @@ export const en: Messages = {
     free: "Free to start",
     hint: "Drag to turn · tap to switch the mic on",
     onAir: "On air",
+    micLabel: "3D microphone. Drag to turn, tap to switch it on.",
+    lyricLabel: "● Live · Room 7108",
+    lyric: "Raise your glass and laugh out loud, tonight we sing for each other",
   },
   marquee: [
     "AI host",

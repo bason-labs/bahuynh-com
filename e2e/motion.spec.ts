@@ -151,3 +151,41 @@ for (const lang of ["vi", "en"] as const) {
     await expectMarqueeStill(page);
   });
 }
+
+const tapHero = (page: Page) => page.mouse.click(720, 300);
+
+async function expectStillLive(page: Page) {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  const hero = page.locator("header#top");
+  await tapHero(page);
+  await expect(hero).toHaveAttribute("data-live", "true");
+  const onair = hero.locator("div").filter({ hasText: /^On air$/ });
+  await expect(onair).toHaveCSS("background-color", "rgb(255, 74, 43)");
+  await expect(onair).toHaveCSS("transition-duration", "0s");
+  await expect(hero.locator('div[aria-hidden="true"]').first()).toHaveCSS("transition-duration", "0s");
+  await page.waitForTimeout(500);
+  await expect(hero.locator("i")).toHaveCount(0);
+  const sungCount = () =>
+    hero.evaluate((h) => {
+      const lyric = [...h.querySelectorAll('div[aria-hidden="true"]')].at(-1)!;
+      const words = [...lyric.children].slice(1);
+      return `${words.filter((w) => getComputedStyle(w).color === "rgb(243, 239, 232)").length}/${words.length}`;
+    });
+  expect(await sungCount()).toBe("13/13");
+  await page.waitForTimeout(800);
+  expect(await sungCount()).toBe("13/13");
+}
+
+test.describe("hero live state under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("no transition, no rings, the whole lyric sung and kept", async ({ page }) => {
+    await gotoPage(page, "vi");
+    await expectStillLive(page);
+  });
+});
+
+test("hero live state with the pause toggle pressed", async ({ page }) => {
+  await gotoPage(page, "en");
+  await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
+  await expectStillLive(page);
+});
