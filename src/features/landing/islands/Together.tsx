@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { useReducedMotion } from "@/components/site/islands/useReducedMotion";
+import { togetherGlow } from "@/lib/crowd";
+import { decayHeat, raiseHeat } from "@/lib/heat";
 import { PALETTE, withAlpha } from "@/lib/palette";
 import { formatCount, increment, pointFor, WORD_LIFETIME_MS } from "@/lib/reaction";
 import styles from "../sections/together.module.css";
@@ -26,8 +29,6 @@ const CROWD_COLORS: CrowdColors = {
       : withAlpha(row % 2 ? PALETTE.cool : PALETTE.warm, alpha),
 };
 
-const calmGlow = () => "rgba(255,74,43,.08)";
-
 type Word = { id: number; text: string; x: number; y: number };
 
 export function TogetherScene({ locale, initial, strings, buttons, words }: TogetherSceneProps) {
@@ -37,10 +38,46 @@ export function TogetherScene({ locale, initial, strings, buttons, words }: Toge
   const crowd = useRef<CrowdHandle>(null);
   const nextId = useRef(0);
   const timers = useRef(new Set<number>());
+  const heat = useRef(0);
+  const cooling = useRef(0);
+  const reduced = useReducedMotion();
+  const reducedNow = useRef(reduced);
+  useEffect(() => {
+    reducedNow.current = reduced;
+  }, [reduced]);
 
   useEffect(() => {
     const pending = timers.current;
     return () => pending.forEach((t) => window.clearTimeout(t));
+  }, []);
+
+  const getHeat = useCallback(() => heat.current, []);
+
+  const showHeat = useCallback(() => {
+    scene.current!.dataset.heat = heat.current.toFixed(2);
+  }, []);
+
+  /** Cools the heat by elapsed time x 60 frames each frame until it is 0, so it takes about 4.2 s at any refresh rate. */
+  const cool = useCallback(() => {
+    if (cooling.current) return;
+    let last = performance.now();
+    const step = () => {
+      const now = performance.now();
+      heat.current = decayHeat(heat.current, ((now - last) / 1000) * 60);
+      last = now;
+      showHeat();
+      // With motion reduced the canvas runs no loop, so each heat change draws one frame.
+      if (reducedNow.current) crowd.current?.redraw();
+      cooling.current = heat.current > 0 ? requestAnimationFrame(step) : 0;
+    };
+    cooling.current = requestAnimationFrame(step);
+  }, [showHeat]);
+
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(cooling.current);
+      cooling.current = 0;
+    };
   }, []);
 
   /** One reaction at (x, y) in scene pixels, or at a random point; `word` picks the word, else random. */
@@ -48,7 +85,10 @@ export function TogetherScene({ locale, initial, strings, buttons, words }: Toge
     (at: { x: number; y: number } | null, word?: number) => {
       const { clientWidth, clientHeight } = scene.current!;
       const point = at ?? pointFor(Math.random(), Math.random(), clientWidth, clientHeight);
+      heat.current = raiseHeat(heat.current);
+      showHeat();
       crowd.current!.burst(point.x, point.y);
+      cool();
       setCount((c) => c + increment(Math.random()));
       const created: Word = {
         id: nextId.current++,
@@ -62,7 +102,7 @@ export function TogetherScene({ locale, initial, strings, buttons, words }: Toge
       }, WORD_LIFETIME_MS);
       timers.current.add(timer);
     },
-    [words],
+    [words, showHeat, cool],
   );
 
   const onTap = (e: MouseEvent) => {
@@ -75,7 +115,7 @@ export function TogetherScene({ locale, initial, strings, buttons, words }: Toge
   };
 
   return (
-    <div ref={scene} className={styles.scene} data-scene>
+    <div ref={scene} className={styles.scene} data-scene data-heat="0.00">
       <CrowdCanvas
         ref={crowd}
         className={styles.people}
@@ -84,8 +124,8 @@ export function TogetherScene({ locale, initial, strings, buttons, words }: Toge
         scale={1.15}
         rowLift={70}
         colors={CROWD_COLORS}
-        heat={0}
-        glow={calmGlow}
+        heat={getHeat}
+        glow={togetherGlow}
       />
       <div className={styles.over}>
         <div className="mono" data-room>

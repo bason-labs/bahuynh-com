@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crowdFrameParams, heroGlow, seedPeople } from "./crowd";
+import { crowdFrameParams, heroGlow, seedPeople, togetherGlow } from "./crowd";
 
 const times = Array.from({ length: 200 }, (_, i) => i * 0.1);
 const hero = { rows: 2, gap: 78, scale: 0.62 };
@@ -60,5 +60,29 @@ describe("seedPeople", () => {
       expect(p.x).toBeGreaterThan(-100);
       expect(p.x).toBeLessThan(1440 + 100);
     }
+  });
+});
+
+describe("togetherGlow", () => {
+  it("is 0.08 calm and 0.33 at full heat", () => {
+    expect(togetherGlow(0)).toBe("rgba(255,74,43,0.08)");
+    expect(togetherGlow(1)).toBe("rgba(255,74,43,0.33)");
+  });
+  it("grows with the heat", () => {
+    const alpha = (h: number) => Number(togetherGlow(h).match(/,([\d.]+)\)$/)![1]);
+    expect(alpha(0.5)).toBeCloseTo(0.205, 10);
+    expect(alpha(0.5)).toBeGreaterThan(alpha(0));
+    expect(alpha(1)).toBeGreaterThan(alpha(0.5));
+  });
+});
+
+describe("crowdFrameParams at the Together scene's heats", () => {
+  it("heat 0 raises phones to 0.55 and bobs 2 px; heat 1 raises them fully, doubles the glow and bobs 8 px", () => {
+    const calm = crowdFrameParams(0, 0, false);
+    expect(calm.raise).toBeCloseTo(0.55, 10);
+    expect(Math.max(...times.map((t) => Math.abs(crowdFrameParams(0, t, false).bobPx)))).toBeCloseTo(2, 1);
+    const hot = crowdFrameParams(1, 0, true);
+    expect(hot).toEqual({ raise: 1, bobPx: 0, glowRadiusScale: 2 });
+    expect(Math.max(...times.map((t) => Math.abs(crowdFrameParams(1, t, false).bobPx)))).toBeCloseTo(8, 1);
   });
 });

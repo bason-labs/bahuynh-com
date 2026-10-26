@@ -61,3 +61,8 @@ export function crowdFrameParams(heat: number, t: number, reduce: boolean, ph = 
 export function heroGlow(heat: number): string {
   return heat > 0 ? PALETTE.glowLive : PALETTE.glowIdle;
 }
+
+/** Together scene glow behind the crowd: faint red when calm, stronger with the heat. */
+export function togetherGlow(heat: number): string {
+  return `rgba(255,74,43,${0.08 + heat * 0.25})`;
+}

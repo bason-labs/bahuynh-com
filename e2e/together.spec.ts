@@ -320,3 +320,84 @@ for (const lang of ["vi", "en"] as const) {
     });
   });
 }
+
+for (const lang of ["vi", "en"] as const) {
+  const sc = scene[lang];
+  const react = (page: Page, times = 1) =>
+    (async () => {
+      for (let i = 0; i < times; i++) await sceneOf(page).getByRole("button", { name: sc.buttons[0], exact: true }).click();
+    })();
+  const heatOf = async (page: Page) => Number(await sceneOf(page).getAttribute("data-heat"));
+
+  test.describe(`together crowd heat on ${lang}`, () => {
+    test("is calm at 0.00 on load", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      await expect(sceneOf(page)).toHaveAttribute("data-heat", "0.00");
+    });
+
+    test("each reaction raises it by 0.3: 0.30 after one, 0.60 after two", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await frozen(page, lang);
+      await react(page);
+      expect(await heatOf(page)).toBeCloseTo(0.3, 1);
+      await react(page);
+      expect(await heatOf(page)).toBeCloseTo(0.6, 1);
+    });
+
+    test("four reactions within 0.2 s make it 1.00, not 1.2, and five stay there", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await frozen(page, lang);
+      await react(page, 4);
+      await expect(sceneOf(page)).toHaveAttribute("data-heat", "1.00");
+      await react(page);
+      await expect(sceneOf(page)).toHaveAttribute("data-heat", "1.00");
+    });
+
+    test("from 1.00 it falls to 0.50 in 2.1 s and to 0.00 by 4.3 s, and stays", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await frozen(page, lang);
+      await react(page, 4);
+      await expect(sceneOf(page)).toHaveAttribute("data-heat", "1.00");
+      await page.clock.runFor(2100);
+      expect(Math.abs((await heatOf(page)) - 0.5)).toBeLessThanOrEqual(0.05);
+      await page.clock.runFor(2200);
+      await expect(sceneOf(page)).toHaveAttribute("data-heat", "0.00");
+      await page.clock.runFor(1000);
+      await expect(sceneOf(page)).toHaveAttribute("data-heat", "0.00");
+    });
+
+    test("a reaction while cooling raises it again from where it is", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await frozen(page, lang);
+      await react(page, 2);
+      await page.clock.runFor(1000);
+      const before = await heatOf(page);
+      expect(before).toBeLessThan(0.6);
+      await react(page);
+      expect(Math.abs((await heatOf(page)) - (before + 0.3))).toBeLessThanOrEqual(0.02);
+    });
+
+    test("the crowd canvas draws with the heat: it shows the same heat and fills more of the frame when hot", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await page.clock.install();
+      await gotoPage(page, lang);
+      await sceneOf(page).scrollIntoViewIfNeeded();
+      await page.clock.pauseAt(new Date(Date.now() + 60_000));
+      await page.evaluate(() => document.querySelectorAll("header canvas").forEach((c) => ((c as HTMLElement).style.display = "none")));
+      const ink = () =>
+        canvasOf(page).evaluate((canvas: HTMLCanvasElement) => {
+          const { data } = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height);
+          let sum = 0;
+          for (let i = 3; i < data.length; i += 4) sum += data[i];
+          return sum / (data.length / 4);
+        });
+      await page.clock.runFor(100);
+      const calm = await ink();
+      await react(page, 4);
+      await page.clock.runFor(50);
+      expect(Math.abs(Number(await canvasOf(page).getAttribute("data-heat")) - (await heatOf(page)))).toBeLessThanOrEqual(0.05);
+      expect(await ink()).toBeGreaterThan(calm);
+    });
+  });
+}
