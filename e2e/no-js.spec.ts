@@ -36,3 +36,17 @@ for (const [lang, parts] of [
     await expect(section.getByRole("button")).toHaveCount(8);
   });
 }
+
+for (const [lang, parts] of [
+  ["vi", ["02", "/ Quay bài", "Chưa biết hát gì? Quay.", "Ai cũng từng đứng trước danh sách mười nghìn bài.", "Cụng Ly Nào", "Mây Lang Thang", "Quay bài", "Bài minh hoạ", "Trên TV", "BS KARA", "Phòng 7108", "Hàng chờ trống", "Hàng chờ", "Đêm Nay HátMinh"]],
+  ["en", ["02", "/ Spin", "Nothing to sing? Spin.", "Everyone has stared at a list of ten thousand songs.", "Cụng Ly Nào", "Mây Lang Thang", "Spin", "Sample songs", "On the TV", "BS KARA", "Room 7108", "Queue is empty", "Queue", "Đêm Nay HátMinh"]],
+] as const) {
+  test(`the spin chapter is present without JavaScript on ${lang}`, async ({ page }) => {
+    await gotoPage(page, lang);
+    const section = page.locator("section#quay");
+    for (const part of parts) {
+      await expect(section).toContainText(part);
+    }
+    await expect(page.locator("[data-reel] li")).toHaveCount(64);
+  });
+}

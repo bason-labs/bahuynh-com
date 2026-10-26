@@ -286,3 +286,40 @@ test("hero crowd stops drawing while off screen or in a hidden tab, and resumes"
   });
   expect(await idleFor()).toBeGreaterThan(0);
 });
+
+async function expectReelLandsAtOnce(page: Page, lang: "vi" | "en") {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  const section = page.locator("section#quay");
+  const spin = section.getByRole("button", { name: lang === "vi" ? "Quay bài" : "Spin", exact: true });
+  const list = page.locator("[data-reel] ul");
+  await spin.scrollIntoViewIfNeeded();
+  await expect(page.locator("[data-reel] li[data-hit]")).toHaveCount(1);
+  for (let press = 0; press < 2; press++) {
+    await spin.click();
+    // no wait: the winner is in the highlighted row as soon as the press is handled
+    expect(await page.locator("[data-reel] li[data-hit]").count()).toBe(1);
+    await expect(list).toHaveCSS("transition-property", "none");
+    await expect(list).toHaveCSS("transition-duration", "0s");
+    await expect(spin).toHaveAttribute("aria-disabled", "false");
+    const index = await page
+      .locator("[data-reel] li")
+      .evaluateAll((els) => els.findIndex((el) => el.hasAttribute("data-hit")));
+    const shift = await list.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m42);
+    expect(shift).toBe(-(index - 1) * 110);
+    expect(await page.evaluate(() => document.getAnimations().filter((a) => a instanceof CSSTransition).length)).toBe(0);
+  }
+}
+
+test.describe("spin reel under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("vi: the winner shows at once, with no scrolling", async ({ page }) => {
+    await gotoPage(page, "vi");
+    await expectReelLandsAtOnce(page, "vi");
+  });
+});
+
+test("spin reel with the pause toggle pressed shows the winner at once", async ({ page }) => {
+  await gotoPage(page, "en");
+  await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
+  await expectReelLandsAtOnce(page, "en");
+});

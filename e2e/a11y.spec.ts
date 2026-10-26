@@ -49,5 +49,25 @@ for (const lang of ["vi", "en"] as const) {
       await checkAxe(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });
+
+    test(`axe finds no violation on ${lang} at ${key} with the spin reel at rest and landed`, async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS[key]);
+      await page.clock.install();
+      await gotoPage(page, lang);
+      const section = page.locator("section#quay");
+      await section.scrollIntoViewIfNeeded();
+      await checkAxe(page);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      // axe needs real timers: pause the clock only while the spin runs, with the canvases hidden
+      await page.evaluate(() => document.querySelectorAll("canvas").forEach((c) => (c.style.display = "none")));
+      await page.clock.pauseAt(new Date(Date.now() + 60_000));
+      await section.getByRole("button", { name: lang === "vi" ? "Quay bài" : "Spin", exact: true }).click();
+      await page.clock.runFor(3400);
+      await expect(page.locator("[data-reel] li[data-hit]")).toHaveCount(1);
+      await page.locator("[data-reel] ul").evaluate((el) => el.getAnimations().forEach((a) => a.finish()));
+      await page.clock.resume();
+      await checkAxe(page);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    });
   }
 }
