@@ -1,0 +1,23 @@
+{
+  "initialJsGzKb": 180,
+  "htmlGzKb": 50,
+  "micChunkGzKb": 170,
+  "preloadFontKb": 200,
+  "threeMarker": "__THREE__",
+  "baseline": {
+    "note": "measured by scripts/check-build.mjs on the current build; threeMarker is provisional until three arrives in ticket 22",
+    "initialJsGzKb": {
+      "/": 132.5,
+      "/en/": 132.5
+    },
+    "htmlGzKb": {
+      "/": 2.2,
+      "/en/": 2.2
+    },
+    "micChunkGzKb": null,
+    "preloadFontKb": {
+      "/": 174.9,
+      "/en/": 174.9
+    }
+  }
+}
