@@ -1,0 +1,36 @@
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 6px 10px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+}
+
+.glyph::before {
+  content: "❚❚";
+}
+
+.toggle:hover {
+  color: var(--fg);
+}
+
+.toggle[aria-pressed="true"] {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+@media (max-width: 560px) {
+  .toggle {
+    justify-content: center;
+    padding: 6px;
+  }
+
+  .text {
+    display: none;
+  }
+}

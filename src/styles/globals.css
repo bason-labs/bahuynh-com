@@ -106,10 +106,20 @@ a {
   }
 }
 
+html[data-motion="reduce"],
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  html:not([data-motion="run"]),
+  html:not([data-motion="run"]) *,
+  html:not([data-motion="run"]) *::before,
+  html:not([data-motion="run"]) *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
