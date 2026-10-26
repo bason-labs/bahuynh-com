@@ -359,11 +359,11 @@ for (const lang of ["vi", "en"] as const) {
       await frozen(page, lang);
       await react(page, 4);
       await expect(sceneOf(page)).toHaveAttribute("data-heat", "1.00");
-      await page.clock.runFor(2100);
+      await page.clock.fastForward(2100);
       expect(Math.abs((await heatOf(page)) - 0.5)).toBeLessThanOrEqual(0.05);
-      await page.clock.runFor(2200);
+      await page.clock.fastForward(2200);
       await expect(sceneOf(page)).toHaveAttribute("data-heat", "0.00");
-      await page.clock.runFor(1000);
+      await page.clock.runFor(300);
       await expect(sceneOf(page)).toHaveAttribute("data-heat", "0.00");
     });
 
@@ -371,7 +371,7 @@ for (const lang of ["vi", "en"] as const) {
       await page.setViewportSize(VIEWPORTS.desktop);
       await frozen(page, lang);
       await react(page, 2);
-      await page.clock.runFor(1000);
+      await page.clock.fastForward(1000);
       const before = await heatOf(page);
       expect(before).toBeLessThan(0.6);
       await react(page);

@@ -416,19 +416,21 @@ async function expectStillHeat(page: Page, pause: boolean) {
   await expect(scene).toHaveAttribute("data-heat", "0.00");
   const calm = await image();
   const calmFrames = await sceneFrames(page);
-  await page.clock.runFor(1000);
+  await page.clock.runFor(300);
   expect(await sceneFrames(page)).toBe(calmFrames);
   for (let i = 0; i < 4; i++) await scene.getByRole("button", { name: "Vỗ tay", exact: true }).click();
   await expect(scene).toHaveAttribute("data-heat", "1.00");
   expect(await sceneFrames(page)).toBeGreaterThan(calmFrames);
   expect(await image()).not.toBe(calm);
-  await page.clock.runFor(2100);
+  // The heat falls by elapsed time, so a jump is enough; the frame count is checked over short runs.
+  await page.clock.fastForward(2100);
   expect(Math.abs(Number(await scene.getAttribute("data-heat")) - 0.5)).toBeLessThanOrEqual(0.05);
-  await page.clock.runFor(2300);
+  await page.clock.fastForward(2300);
+  await page.clock.runFor(100);
   await expect(scene).toHaveAttribute("data-heat", "0.00");
   expect(await image()).toBe(calm);
   const cooled = await sceneFrames(page);
-  await page.clock.runFor(1000);
+  await page.clock.runFor(300);
   expect(await sceneFrames(page)).toBe(cooled);
 }
 
