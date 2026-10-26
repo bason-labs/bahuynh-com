@@ -243,8 +243,8 @@ test("hero crowd animates, then stands still with the pause toggle pressed", asy
   await countCrowdFrames(page);
   await gotoPage(page, "vi");
   const before = await crowdFrames(page);
-  await page.waitForTimeout(500);
-  expect(await crowdFrames(page)).toBeGreaterThan(before + 5);
+  // running means frames keep coming; poll rather than count a rate, which a loaded machine can starve
+  await expect.poll(() => crowdFrames(page), { timeout: 10_000 }).toBeGreaterThan(before + 5);
   await page.getByRole("navigation").getByRole("button", { name: names.vi, exact: true }).click();
   await expectStillCrowdPaused(page);
 });
@@ -275,12 +275,16 @@ test("hero crowd stops drawing while off screen or in a hidden tab, and resumes"
     await page.waitForTimeout(700);
     return (await crowdFrames(page)) - frames;
   };
-  // running vs stopped is "some frames" vs "none": a loaded CI machine can drop rAF to a few fps
-  expect(await idleFor()).toBeGreaterThan(0);
+  // running means frames keep coming: poll for them, since a loaded machine can starve rAF for a while
+  const expectRunning = async () => {
+    const frames = await crowdFrames(page);
+    await expect.poll(() => crowdFrames(page), { timeout: 10_000 }).toBeGreaterThan(frames);
+  };
+  await expectRunning();
   await page.evaluate(() => window.scrollTo(0, 3000));
   expect(await idleFor()).toBe(0);
   await page.evaluate(() => window.scrollTo(0, 0));
-  expect(await idleFor()).toBeGreaterThan(0);
+  await expectRunning();
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
     document.dispatchEvent(new Event("visibilitychange"));
@@ -290,7 +294,7 @@ test("hero crowd stops drawing while off screen or in a hidden tab, and resumes"
     Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  expect(await idleFor()).toBeGreaterThan(0);
+  await expectRunning();
 });
 
 const framesStill = async (page: Page) => {
