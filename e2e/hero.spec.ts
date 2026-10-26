@@ -360,6 +360,8 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       await page.clock.pauseAt(Date.now() + 60_000);
       const hero = page.locator("header#top");
+      // fake time also runs every animation frame; hide the crowd canvas so its loop stops and the test stays fast
+      await hero.locator("canvas[data-heat]").evaluate((c) => ((c as HTMLElement).style.display = "none"));
       const sung = () =>
         hero.evaluate((h) => {
           const lyric = [...h.querySelectorAll('div[aria-hidden="true"]')].at(-1)!;
