@@ -12,7 +12,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
@@ -22,7 +22,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      # No --with-deps: the ubuntu image already has the headless shell's libraries, and apt from
+      # the runner's mirror once took 13 minutes.
+      - run: pnpm exec playwright install chromium
       - run: pnpm e2e
       - name: Upload Playwright report
         if: failure()
