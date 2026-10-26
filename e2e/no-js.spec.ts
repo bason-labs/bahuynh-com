@@ -50,3 +50,17 @@ for (const [lang, parts] of [
     await expect(page.locator("[data-reel] li")).toHaveCount(64);
   });
 }
+
+for (const [lang, parts] of [
+  ["vi", ["03", "/ Cùng nhau", "Không ai hát một mình.", "Người cầm micro, người chọn bài, người vỗ tay.", "Mở phòng trên TV", "Mọi người quét mã", "Thêm bài, cầm mic"]],
+  ["en", ["03", "/ Together", "Nobody sings alone.", "One holds the mic, one picks the songs, one claps.", "Open a room on the TV", "Everyone scans the code", "Add songs, grab the mic"]],
+] as const) {
+  test(`the together chapter is present without JavaScript on ${lang}`, async ({ page }) => {
+    await gotoPage(page, lang);
+    const section = page.locator("section#cungnhau");
+    for (const part of parts) {
+      await expect(section).toContainText(part);
+    }
+    await expect(section.getByRole("heading", { level: 3 })).toHaveCount(3);
+  });
+}

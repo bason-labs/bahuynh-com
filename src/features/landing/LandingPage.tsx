@@ -5,6 +5,7 @@ import { Film } from "./sections/Film";
 import { Hero } from "./sections/Hero";
 import { Marquee } from "./sections/Marquee";
 import { Spin } from "./sections/Spin";
+import { Together } from "./sections/Together";
 
 export function LandingPage({ locale }: { locale: Locale }) {
   const t = getMessages(locale);
@@ -24,6 +25,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
         <Marquee locale={locale} />
         <Film locale={locale} />
         <Spin locale={locale} />
+        <Together locale={locale} />
       </main>
       <Footer locale={locale} />
     </>

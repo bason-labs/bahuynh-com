@@ -110,4 +110,15 @@ export const en: Messages = {
       { song: "Đêm Nay Hát", who: "Minh" },
     ],
   },
+  together: {
+    kicker: "/ Together",
+    titleLead: "Nobody sings",
+    titleAccent: "alone.",
+    lede: "One holds the mic, one picks the songs, one claps. Every phone in the room is part of the night. Tap the crowd and see.",
+    steps: [
+      { title: "Open a room on the TV", text: "Smart TV, projector or a laptop on a screen. Open the browser and you're in." },
+      { title: "Everyone scans the code", text: "A QR code on the TV. No app to install, no account needed to sing." },
+      { title: "Add songs, grab the mic", text: "Anyone adds songs from their phone. The AI host introduces, the TV plays, the room sings." },
+    ],
+  },
 };
