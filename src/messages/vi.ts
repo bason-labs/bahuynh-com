@@ -124,4 +124,47 @@ export const vi = {
     buttons: ["Vỗ tay", "Hay quá", "Encore", "Cháy"],
     words: ["Vỗ tay!", "Hay quá!", "Encore!", "Cháy!"],
   },
+  features: {
+    kicker: "/ Tính năng",
+    titleLead: "Mọi thứ một",
+    titleAccent: "đêm hát cần.",
+    lede: "Không có máy karaoke, không có remote bị mất. Chỉ có TV, điện thoại và bạn bè.",
+    host: {
+      label: "MC AI",
+      quote: "“Bài tiếp theo dành cho Lan, người vừa trốn hát cả tối…”",
+      voice: "Giọng đọc tiếng Việt",
+      title: "MC dẫn từng bài",
+      text: "Lời giới thiệu viết riêng cho người hát và bài hát, đọc bằng giọng Việt tự nhiên.",
+    },
+    phone: {
+      label: "Điện thoại",
+      title: "Điện thoại là điều khiển",
+      text: "Quét mã là vào phòng. Tìm bài, thêm vào hàng chờ, thả cảm xúc lên TV.",
+    },
+    score: {
+      label: "Chấm điểm",
+      value: "98",
+      grade: "Xuất sắc",
+      title: "Điểm số cho vui",
+      text: "Hết bài là có điểm và danh hiệu. Không ai bị chê, ai cũng muốn hát thêm.",
+    },
+    next: {
+      label: "Hát tiếp",
+      songs: ["Mây Lang Thang", "Về Nhà Thôi", "Cụng Ly Nào"],
+      add: "+",
+      title: "Gợi ý bài tiếp",
+      text: "Hết ý tưởng? Gợi ý các bài liên quan đến bài đang phát, chạm một lần để thêm.",
+    },
+    reactions: {
+      label: "Cảm xúc",
+      title: "Cả phòng cùng phản ứng",
+      text: "Vỗ tay, khen, đòi hát lại. Cảm xúc bay lên TV ngay khi người hát đang hát.",
+    },
+    screens: {
+      label: "Màn hình",
+      devices: "TV · PROJECTOR · LAPTOP",
+      title: "TV nào cũng được",
+      text: "Smart TV, Android box, máy chiếu. Video nét, tự xử lý máy yếu.",
+    },
+  },
 } as const;

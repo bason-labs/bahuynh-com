@@ -1,6 +1,7 @@
 import { Footer, Grain, SiteNav } from "@/components/site";
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/messages";
+import { Features } from "./sections/Features";
 import { Film } from "./sections/Film";
 import { Hero } from "./sections/Hero";
 import { Marquee } from "./sections/Marquee";
@@ -26,6 +27,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
         <Film locale={locale} />
         <Spin locale={locale} />
         <Together locale={locale} />
+        <Features locale={locale} />
       </main>
       <Footer locale={locale} />
     </>

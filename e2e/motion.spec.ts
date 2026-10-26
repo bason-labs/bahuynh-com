@@ -450,3 +450,25 @@ test("together crowd heat with the pause toggle pressed rises and falls without 
   await countSceneFrames(page);
   await expectStillHeat(page, true);
 });
+
+/** The feature 05 bars stand still under reduced motion, by the system setting and by the pause toggle. */
+for (const how of ["system setting", "pause toggle"] as const) {
+  test.describe(`feature bars under reduced motion (${how})`, () => {
+    test.use({ reducedMotion: how === "system setting" ? "reduce" : "no-preference" });
+
+    for (const lang of ["vi", "en"] as const) {
+      test(`${lang}: the 28 bars have no running animation`, async ({ page }) => {
+        await gotoPage(page, lang);
+        const bars = page.locator("section#tinhnang [data-bars] i");
+        await expect(bars).toHaveCount(28);
+        if (how === "pause toggle") {
+          expect(await bars.first().evaluate((el) => el.getAnimations().length)).toBe(1);
+          await page.getByRole("navigation").getByRole("button", { name: names[lang], exact: true }).click();
+        }
+        await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
+        await expect(bars.first()).toHaveCSS("animation-name", "none");
+        expect(await bars.evaluateAll((els) => els.reduce((n, el) => n + el.getAnimations().length, 0))).toBe(0);
+      });
+    }
+  });
+}
