@@ -1,0 +1,18 @@
+:root {
+  --bg: #09090a;
+  --bg-2: #0f0f11;
+  --fg: #f3efe8;
+  --muted: #8d8b87;
+  --dim: #55534f;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-2: rgba(255, 255, 255, 0.16);
+  --air: #ff4a2b;
+  --spot: #ffe9c4;
+  --phone: #bfe6ff;
+  --gut: clamp(16px, 4vw, 56px);
+  --max: 1280px;
+  --display: var(--font-archivo), "Arial Narrow", sans-serif;
+  --sans: var(--font-be-vietnam-pro), system-ui, sans-serif;
+  --mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --serif: var(--font-playfair-display), Georgia, serif;
+}
