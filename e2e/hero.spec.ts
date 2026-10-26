@@ -298,6 +298,8 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
       const rings = hero.locator("i");
+      // fake time also runs every animation frame; hide the crowd canvas so its loop stops
+      await hero.locator("canvas[data-heat]").evaluate((c) => ((c as HTMLElement).style.display = "none"));
       for (const expected of ["true", "false"]) {
         await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
         await expect(hero).toHaveAttribute("data-live", expected);
