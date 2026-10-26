@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { useReducedMotion } from "@/components/site/islands/useReducedMotion";
 import { crowdFrameParams, seedPeople, type Person } from "@/lib/crowd";
-import { PALETTE } from "@/lib/palette";
+import { PALETTE, withAlpha } from "@/lib/palette";
+import { makeSparks, stepSpark, type Spark } from "@/lib/sparks";
 
 export type CrowdColors = {
   person: (row: number) => string;
-  phone: (row: number, alpha: number) => string;
+  /** `ph` is the person's phase offset, for crowds that colour phones per person. */
+  phone: (row: number, alpha: number, ph: number) => string;
 };
 
 export type CrowdCanvasProps = {
@@ -20,7 +22,16 @@ export type CrowdCanvasProps = {
   heat: number | (() => number);
   glow: (heat: number) => string;
   className?: string;
+  ref?: Ref<CrowdHandle>;
 };
+
+export type CrowdHandle = {
+  /** Light sparks from (x, y) in canvas pixels. */
+  burst: (x: number, y: number, n?: number) => void;
+};
+
+/** How long a still burst stays on screen when motion is reduced. */
+const STILL_BURST_MS = 2300;
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -64,7 +75,7 @@ function drawPerson(
   ctx.lineTo(px, py + 8 * s);
   ctx.stroke();
   const reach = 60 * s * glowRadiusScale;
-  const core = colors.phone(p.row, 0.5 + heat * 0.4);
+  const core = colors.phone(p.row, 0.5 + heat * 0.4, p.ph);
   const radius = 46 * s * glowRadiusScale;
   const key = `${core}|${radius}`;
   let g = glows.get(key);
@@ -79,18 +90,21 @@ function drawPerson(
   ctx.fillStyle = g;
   ctx.fillRect(-reach, -reach, reach * 2, reach * 2);
   ctx.restore();
-  ctx.fillStyle = colors.phone(p.row, 0.95);
+  ctx.fillStyle = colors.phone(p.row, 0.95, p.ph);
   ctx.fillRect(px - 5 * s, py - 8 * s, 10 * s, 16 * s);
 }
 
 /** Backlit silhouettes holding phone lights. Decorative: hidden from assistive tech and never takes pointer events. */
-export function CrowdCanvas({ rows, gap, scale, rowLift, colors, heat, glow, className }: CrowdCanvasProps) {
-  const ref = useRef<HTMLCanvasElement>(null);
+export function CrowdCanvas({ rows, gap, scale, rowLift, colors, heat, glow, className, ref }: CrowdCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sparks = useRef<Spark[]>([]);
+  const redraw = useRef<() => void>(() => {});
+  const stillTimers = useRef(new Set<number>());
   const start = useRef<number | null>(null);
   const reduced = useReducedMotion();
 
   useEffect(() => {
-    const canvas = ref.current!;
+    const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     start.current ??= performance.now();
@@ -113,7 +127,20 @@ export function CrowdCanvas({ rows, gap, scale, rowLift, colors, heat, glow, cla
       ctx.fillStyle = wash;
       ctx.fillRect(0, 0, w, h);
       for (const p of people) drawPerson(ctx, p, h + 4 - p.row * rowLift, t, level, reduced, colors, glows);
+      if (!reduced) sparks.current = sparks.current.filter((s) => s.life > 0);
+      for (const s of sparks.current) {
+        if (!reduced) stepSpark(s);
+        const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r);
+        g.addColorStop(0, withAlpha(s.color, Math.max(s.life, 0)));
+        g.addColorStop(1, PALETTE.clear);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, 7);
+        ctx.fill();
+      }
+      canvas.dataset.sparks = String(sparks.current.length);
     };
+    redraw.current = () => draw(performance.now());
     const loop = (now: number) => {
       draw(now);
       raf = requestAnimationFrame(loop);
@@ -151,8 +178,35 @@ export function CrowdCanvas({ rows, gap, scale, rowLift, colors, heat, glow, cla
       visibility.disconnect();
       document.removeEventListener("visibilitychange", sync);
       cancelAnimationFrame(raf);
+      redraw.current = () => {};
     };
   }, [rows, gap, scale, rowLift, colors, heat, glow, reduced]);
 
-  return <canvas ref={ref} className={className} aria-hidden="true" data-heat="0.00" />;
+  useEffect(() => {
+    const timers = stillTimers.current;
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      burst(x, y, n = 26) {
+        const batch = makeSparks(x, y, n, Math.random);
+        sparks.current.push(...batch);
+        canvasRef.current!.dataset.sparks = String(sparks.current.length);
+        if (!reduced) return;
+        // Motion is reduced: no loop runs, so draw the burst once where it was tapped and clear it later.
+        redraw.current();
+        const timer = window.setTimeout(() => {
+          stillTimers.current.delete(timer);
+          sparks.current = sparks.current.filter((s) => !batch.includes(s));
+          redraw.current();
+        }, STILL_BURST_MS);
+        stillTimers.current.add(timer);
+      },
+    }),
+    [reduced],
+  );
+
+  return <canvas ref={canvasRef} className={className} aria-hidden="true" data-heat="0.00" data-sparks="0" />;
 }
