@@ -44,6 +44,7 @@ export const vi = {
     posterAccent: "hát gì?",
     draft: "Bản dựng nháp",
     rec: "REC",
+    captionsLabel: "Tiếng Việt",
     playVideo: "Phát video",
     play: "Phát",
     pause: "Dừng",

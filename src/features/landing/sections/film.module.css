@@ -41,6 +41,31 @@
   opacity: 1;
 }
 
+.video,
+.posterImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.video {
+  object-fit: contain;
+}
+
+.film[data-source="film"] .screen::after {
+  display: none;
+}
+
+.posterImage {
+  object-fit: cover;
+  filter: brightness(0.45);
+}
+
+.shot > div {
+  position: relative;
+}
+
 .big {
   font: 900 clamp(32px, 6vw, 92px) / 0.9 var(--display);
   font-variation-settings: "wdth" 120;

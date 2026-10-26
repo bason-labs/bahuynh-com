@@ -178,6 +178,12 @@ for (const lang of ["vi", "en"] as const) {
       expect(barY).toBeGreaterThan(box.y + box.height - 60);
     });
 
+    test("no film is configured: the animatic plays and the page has no video element", async ({ page }) => {
+      await gotoPage(page, lang);
+      expect(await page.evaluate(() => document.querySelector("video"))).toBeNull();
+      await expect(film(page)).toHaveAttribute("data-source", "animatic");
+    });
+
     test("six chapter buttons: texts, colour, row and grid", async ({ page }) => {
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
