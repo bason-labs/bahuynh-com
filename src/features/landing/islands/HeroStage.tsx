@@ -12,7 +12,10 @@ import {
   type ReactNode,
 } from "react";
 import { useReducedMotion } from "@/components/site/islands/useReducedMotion";
+import { heroGlow } from "@/lib/crowd";
+import { PALETTE, withAlpha } from "@/lib/palette";
 import styles from "../sections/hero.module.css";
+import { CrowdCanvas, type CrowdColors } from "./CrowdCanvas";
 
 export type Point = { x: number; y: number };
 
@@ -35,6 +38,11 @@ const RING_DELAYS = [0, 0.25, 0.5];
 const RING_LIFETIME_MS = 2400;
 /** The CSS mic's grille: a 100 px ball at the top of the 120 px wide mic. */
 const GRILLE = { x: 60, y: 50 };
+
+const HERO_CROWD_COLORS: CrowdColors = {
+  person: (row) => (row ? PALETTE.inkBack : PALETTE.inkFront),
+  phone: (row, alpha) => (row ? withAlpha(PALETTE.cool, alpha * 0.7) : withAlpha(PALETTE.warm, alpha)),
+};
 
 type Ring = { id: number; x: number; y: number; delay: number };
 
@@ -90,6 +98,16 @@ export function HeroStage({ micLabel, children }: { micLabel: string; children: 
         data-live={String(live)}
         data-gl="loading"
       >
+        <CrowdCanvas
+          className={styles.crowd}
+          rows={2}
+          gap={78}
+          scale={0.62}
+          rowLift={20}
+          colors={HERO_CROWD_COLORS}
+          heat={live ? 1 : 0}
+          glow={heroGlow}
+        />
         {children}
         <button
           type="button"

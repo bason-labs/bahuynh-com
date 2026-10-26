@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { expect, gotoPage, skipTransitions, test, VIEWPORTS } from "./support";
 
 const copy = {
@@ -297,6 +298,8 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
       const rings = hero.locator("i");
+      // fake time also runs every animation frame; hide the crowd canvas so its loop stops
+      await hero.locator("canvas[data-heat]").evaluate((c) => ((c as HTMLElement).style.display = "none"));
       for (const expected of ["true", "false"]) {
         await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
         await expect(hero).toHaveAttribute("data-live", expected);
@@ -361,6 +364,8 @@ for (const lang of ["vi", "en"] as const) {
       await skipTransitions(page);
       await page.clock.pauseAt(Date.now() + 60_000);
       const hero = page.locator("header#top");
+      // fake time also runs every animation frame; hide the crowd canvas so its loop stops and the test stays fast
+      await hero.locator("canvas[data-heat]").evaluate((c) => ((c as HTMLElement).style.display = "none"));
       const sung = () =>
         hero.evaluate((h) => {
           const lyric = [...h.querySelectorAll('div[aria-hidden="true"]')].at(-1)!;
@@ -432,3 +437,89 @@ test.describe("touch swipe on the mic", () => {
     await expect(hero).toHaveAttribute("data-live", "false");
   });
 });
+
+/** Alpha-weighted mean colour of a row inside the glow, above the silhouettes and phones. */
+const crowdGlow = (page: Page) =>
+  page.locator("header#top canvas").evaluate((canvas: HTMLCanvasElement) => {
+    const w = canvas.width;
+    const d = canvas.getContext("2d")!.getImageData(0, Math.floor(canvas.height * 0.45), w, 1).data;
+    const sum = { r: 0, g: 0, b: 0, a: 0 };
+    for (let i = 0; i < d.length; i += 4) {
+      sum.r += d[i] * d[i + 3];
+      sum.g += d[i + 1] * d[i + 3];
+      sum.b += d[i + 2] * d[i + 3];
+      sum.a += d[i + 3];
+    }
+    return { r: sum.r / w, g: sum.g / w, b: sum.b / w, a: sum.a / w };
+  });
+
+for (const lang of ["vi", "en"] as const) {
+  test.describe(`hero crowd on ${lang}`, () => {
+    test("canvas covers the bottom 42 %, ignores pointers and is hidden from assistive tech", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const canvas = hero.locator("canvas");
+      await expect(canvas).toHaveCount(1);
+      await expect(canvas).toHaveAttribute("aria-hidden", "true");
+      await expect(canvas).toHaveCSS("pointer-events", "none");
+      const h = (await hero.boundingBox())!;
+      const c = (await canvas.boundingBox())!;
+      expect(c.height).toBeCloseTo(h.height * 0.42, 0);
+      expect(c.y + c.height).toBeCloseTo(h.y + h.height, 0);
+      expect(c.width).toBeCloseTo(h.width, 0);
+      // A click on the canvas reaches the mic control underneath and toggles live.
+      await page.mouse.click(c.x + c.width / 2, c.y + 10);
+      await expect(hero).toHaveAttribute("data-live", "true");
+    });
+
+    test("every hero text paints above the crowd canvas", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      await page.mouse.click(720, 300);
+      const hero = page.locator("header#top");
+      await expect(hero).toHaveAttribute("data-live", "true");
+      const above = await hero.evaluate((h) => {
+        const canvas = h.querySelector("canvas")!;
+        // The hero's direct child that holds `el`, and its z-index.
+        const top = (el: Element) => {
+          let n = el;
+          while (n.parentElement !== h) n = n.parentElement!;
+          return n;
+        };
+        const z = (el: Element) => Number(getComputedStyle(el).zIndex);
+        const paintsAbove = (el: Element) => {
+          const t = top(el);
+          const follows = !!(canvas.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING);
+          return z(t) > z(canvas) || (z(t) === z(canvas) && follows);
+        };
+        const texts = [...h.querySelectorAll("h1, .mono, p, span, a")].filter((el) => el.textContent?.trim());
+        // The BS KARA wordmark is backdrop art and stays below the crowd, as in the prototype.
+        return texts.filter((el) => !el.closest("[class*='word']") && !paintsAbove(el)).map((el) => el.textContent);
+      });
+      expect(above).toEqual([]);
+    });
+
+    test("idle is warm at heat 0.00, live is red at 1.00, and it returns to warm", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const canvas = hero.locator("canvas");
+      await expect(canvas).toHaveAttribute("data-heat", "0.00");
+      await expect.poll(() => crowdGlow(page).then((p) => p.a)).toBeGreaterThan(0);
+      const idle = await crowdGlow(page);
+      expect(idle.r).toBeGreaterThanOrEqual(idle.g);
+      expect(idle.r).toBeGreaterThanOrEqual(idle.b);
+      expect(idle.r).toBeLessThan(idle.g * 2);
+      await page.mouse.click(720, 300);
+      await expect(canvas).toHaveAttribute("data-heat", "1.00");
+      await expect.poll(() => crowdGlow(page).then((p) => p.r)).toBeGreaterThan(idle.r * 1.5);
+      const live = await crowdGlow(page);
+      expect(live.r).toBeGreaterThan(live.g * 2);
+      expect(live.r).toBeGreaterThan(live.b * 2);
+      await page.mouse.click(720, 300);
+      await expect(canvas).toHaveAttribute("data-heat", "0.00");
+      await expect.poll(() => crowdGlow(page).then((p) => p.r / p.g)).toBeLessThan(2);
+    });
+  });
+}
