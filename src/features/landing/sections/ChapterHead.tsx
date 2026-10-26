@@ -6,11 +6,12 @@ type ChapterHeadProps = {
   titleLead: string;
   titleAccent: string;
   lede: string;
+  centered?: boolean;
 };
 
-export function ChapterHead({ number, kicker, titleLead, titleAccent, lede }: ChapterHeadProps) {
+export function ChapterHead({ number, kicker, titleLead, titleAccent, lede, centered }: ChapterHeadProps) {
   return (
-    <div className={styles.head}>
+    <div className={centered ? `${styles.head} ${styles.centered}` : styles.head}>
       <div>
         <div className={`${styles.kicker} mono`}>
           <b>{number}</b>

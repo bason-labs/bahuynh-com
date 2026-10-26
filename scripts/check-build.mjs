@@ -15,8 +15,8 @@ const fmt = (bytes) => `${kb(bytes).toFixed(1)} kB`;
 const gz = (buf) => gzipSync(buf).length;
 
 const pages = [
-  { route: "/", file: "out/index.html", lang: "vi", h1: "Karaoke cho cả nhóm." },
-  { route: "/en/", file: "out/en/index.html", lang: "en", h1: "Karaoke for the whole group." },
+  { route: "/", file: "out/index.html", lang: "vi", h1: "Karaoke cho cả nhóm.", h2s: ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"] },
+  { route: "/en/", file: "out/en/index.html", lang: "en", h1: "Karaoke for the whole group.", h2s: ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"] },
 ];
 const errors = [];
 
@@ -40,7 +40,7 @@ function references(html) {
 }
 const outFile = (url) => join("out", decodeURIComponent(url.split(/[?#]/)[0]));
 
-for (const { route, file, lang, h1 } of pages) {
+for (const { route, file, lang, h1, h2s } of pages) {
   if (!existsSync(file)) {
     errors.push(`${file} is missing`);
     continue;
@@ -48,6 +48,8 @@ for (const { route, file, lang, h1 } of pages) {
   const html = readFileSync(file, "utf8");
   if (!html.includes(`<html lang="${lang}"`)) errors.push(`${file} lacks <html lang="${lang}"`);
   if (!html.replace(/<!--.*?-->|<\/?em>/g, "").includes(h1)) errors.push(`${file} lacks the h1 "${h1}"`);
+  const text = html.replace(/<!--.*?-->|<\/?em>/g, "");
+  for (const h2 of h2s) if (!text.includes(`${h2}</h2>`)) errors.push(`${file} lacks the h2 "${h2}"`);
 
   const htmlGz = gz(Buffer.from(html));
   baseline.htmlGzKb[route] = +kb(htmlGz).toFixed(1);
