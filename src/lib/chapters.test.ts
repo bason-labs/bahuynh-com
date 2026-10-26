@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHAPTER_STARTS, chapterAt, FILM_DURATION, formatChapterTime } from "./chapters";
+import { CHAPTER_STARTS, chapterIndexAt, FILM_DURATION, formatChapterTime, nextStart, prevStart } from "./chapters";
 
 describe("chapters", () => {
   it("has six chapters inside the 36 s film", () => {
@@ -26,6 +26,46 @@ describe("chapters", () => {
     [14.3, 2],
     [35.9, 5],
   ])("second %s is in chapter %i", (t, expected) => {
-    expect(chapterAt(t)).toBe(expected);
+    expect(chapterIndexAt(t, CHAPTER_STARTS)).toBe(expected);
+  });
+
+  it.each([
+    [0, 0],
+    [4.9, 0],
+    [5, 1],
+    [13.9, 1],
+    [14, 2],
+    [20, 2],
+  ])("second %s is in chapter %i of [0, 5, 14]", (t, expected) => {
+    expect(chapterIndexAt(t, [0, 5, 14])).toBe(expected);
+  });
+
+  it.each([
+    [0, 6],
+    [5.99, 6],
+    [6, 12],
+    [31, 0],
+    [36, 0],
+  ])("nextStart(%s) is %s", (t, expected) => {
+    expect(nextStart(t, CHAPTER_STARTS)).toBe(expected);
+  });
+
+  it.each([
+    [7.5, 6],
+    [6.5, 0],
+    [0, 0],
+    [6, 0],
+    [6.9, 0],
+    [12, 6],
+  ])("prevStart(%s) is %s", (t, expected) => {
+    expect(prevStart(t, CHAPTER_STARTS)).toBe(expected);
+  });
+
+  it("works on a three-chapter list [0, 5, 14]", () => {
+    const starts = [0, 5, 14];
+    expect([nextStart(0, starts), nextStart(5, starts), nextStart(14, starts)]).toEqual([5, 14, 0]);
+    expect([prevStart(14, starts), prevStart(6.5, starts), prevStart(5.5, starts), prevStart(0, starts)]).toEqual([
+      5, 5, 0, 0,
+    ]);
   });
 });

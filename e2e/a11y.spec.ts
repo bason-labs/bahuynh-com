@@ -43,6 +43,10 @@ for (const lang of ["vi", "en"] as const) {
       await expect(film).toHaveAttribute("data-running", "true");
       await page.waitForTimeout(800);
       await checkAxe(page);
+      await film.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(page.locator("[data-timecode]")).toHaveText("0:00:06");
+      await checkAxe(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });
   }

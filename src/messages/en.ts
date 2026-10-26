@@ -49,6 +49,7 @@ export const en: Messages = {
     playVideo: "Play video",
     play: "Play",
     pause: "Pause",
+    frameLabel: "Video player. Left and right arrow keys change chapter.",
     keys: "← → chapters",
     chapters: [
       { name: "TV on", title: "TV on", sub: "kara.bahuynh.com/tv · room 7108" },

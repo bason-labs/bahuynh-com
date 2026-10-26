@@ -39,10 +39,35 @@ const copy = {
     chapters: ["TV on", "Scan", "Pick songs", "The host", "Everyone sings", "Score"],
   },
 } as const;
+const SHOTS = {
+  vi: [
+    ["Bật TV", "kara.bahuynh.com/tv · mã phòng 7108"],
+    ["Quét mã", "Mỗi người một điện thoại"],
+    ["Chọn bài", "Hàng chờ chung trên TV"],
+    ["MC dẫn", "Lời giới thiệu riêng cho từng bài"],
+    ["Cả phòng hát", "Thả cảm xúc từ điện thoại"],
+    ["98", "Điểm số · Hát tiếp bài sau"],
+  ],
+  en: [
+    ["TV on", "kara.bahuynh.com/tv · room 7108"],
+    ["Scan", "Everyone on their own phone"],
+    ["Pick songs", "One shared queue on the TV"],
+    ["The host", "A line written for every song"],
+    ["Everyone sings", "Reactions from every phone"],
+    ["98", "Score · next song up"],
+  ],
+} as const;
+const FRAME_NAME = {
+  vi: "Trình phát video. Phím mũi tên trái, phải để chuyển chương.",
+  en: "Video player. Left and right arrow keys change chapter.",
+} as const;
 const TIMES = ["0:00", "0:06", "0:12", "0:18", "0:24", "0:30"];
 
 const film = (page: Page) => page.locator("[data-film]");
 const timecode = (page: Page) => page.locator("[data-timecode]");
+const shown = (page: Page) => film(page).locator('[data-on="true"]');
+const chapterButtons = (page: Page) => page.locator("section#xem").locator("[data-film] + div button");
+const activeButtons = (page: Page) => page.locator('section#xem [data-film] + div button[aria-current="true"]');
 const fill = (page: Page) => page.locator("[data-progress] i");
 
 /** Fake clock, paused after load so that only runFor advances the film. */
@@ -240,6 +265,227 @@ for (const lang of ["vi", "en"] as const) {
       await expect(frame.getByRole("button", { name: c.play, exact: true })).toHaveText(c.playText);
       await expect(frame.getByRole("button", { name: c.playVideo, exact: true })).toBeVisible();
       await expect(frame.getByText(c.poster, { exact: true })).toBeVisible();
+    });
+
+    test("the shot follows the chapter containing the current time", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await frame.getByRole("button", { name: c.playVideo, exact: true }).click();
+      await expect(frame).toHaveAttribute("data-running", "true");
+      await expect(shown(page)).toContainText(SHOTS[lang][0][0]);
+      await page.clock.runFor(5_900);
+      await expect(shown(page)).toContainText(SHOTS[lang][0][0]);
+      await page.clock.runFor(150);
+      await expect(shown(page)).toContainText(SHOTS[lang][1][0]);
+    });
+
+    test("every shot shows its big and sub text; the 31 s shot is 98", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await chapterButtons(page).first().click();
+      await expect(frame).toHaveAttribute("data-running", "true");
+      for (let i = 0; i < 6; i++) {
+        await chapterButtons(page).nth(i).click();
+        await page.clock.runFor(1_100);
+        const on = shown(page);
+        await expect(on).toHaveCount(1);
+        await expect(on.locator("div > div").first()).toHaveText(SHOTS[lang][i][0]);
+        await expect(on.locator("div > div").nth(1)).toHaveText(SHOTS[lang][i][1]);
+      }
+      await expect(timecode(page)).toHaveText("0:00:31");
+      const on = shown(page);
+      await expect(on.locator("div > div").first()).toHaveCSS("font-family", /archivo/i);
+      await expect(on.locator("div > div").first()).toHaveCSS("font-weight", "900");
+      await expect(on.locator("div > div").first()).toHaveCSS("text-transform", "uppercase");
+      await expect(on.locator("div > div").nth(1)).toHaveCSS("color", "rgb(141, 139, 135)");
+      await expect(on.locator("div > div").nth(1)).toHaveCSS("font-family", /mono/i);
+    });
+
+    test("exactly one shot is visible and exposed to assistive technology", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      const check = async (name: string) => {
+        await expect(shown(page)).toHaveCount(1);
+        await expect(shown(page)).toContainText(name);
+        const exposed = await frame.evaluate((el) =>
+          [...el.querySelectorAll("[data-on]")].map((s) => ({
+            on: s.getAttribute("data-on"),
+            hidden: s.getAttribute("aria-hidden"),
+            focusable: s.querySelectorAll("button").length > 0 && !(s as HTMLElement).inert,
+          })),
+        );
+        expect(exposed.filter((s) => s.hidden === "false" || s.hidden === null)).toHaveLength(1);
+        expect(exposed.find((s) => s.on === "true")?.hidden).toBe("false");
+        expect(exposed.filter((s) => s.on === "false").every((s) => s.hidden === "true" && !s.focusable)).toBe(true);
+      };
+      await check(c.poster.split(" ")[0]);
+      await frame.getByRole("button", { name: c.playVideo, exact: true }).click();
+      await page.clock.runFor(100);
+      await check(SHOTS[lang][0][0]);
+      await page.clock.runFor(5_800);
+      await check(SHOTS[lang][0][0]);
+      await page.clock.runFor(200);
+      await check(SHOTS[lang][1][0]);
+      await page.clock.runFor(11_000);
+      await check(SHOTS[lang][2][0]);
+      await page.clock.runFor(18_900);
+      await check(SHOTS[lang][5][0]);
+      await expect(page.getByRole("button", { name: c.playVideo, exact: true })).toHaveCount(0);
+    });
+
+    test("the shot swap cross-fades over 0.5 s", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const shots = film(page).locator("[data-on]");
+      for (let i = 0; i < 7; i++) await expect(shots.nth(i)).toHaveCSS("transition-duration", "0.5s");
+      await expect(shots.nth(0)).toHaveCSS("transition-property", "opacity");
+    });
+
+    test("activating a chapter from the poster plays from its start", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await expect(activeButtons(page)).toHaveCount(0);
+      const button = chapterButtons(page).nth(3);
+      await button.click();
+      await expect(frame).toHaveAttribute("data-running", "true");
+      await expect(timecode(page)).toHaveText("0:00:18");
+      await expect(shown(page)).toContainText(c.chapters[3]);
+      await expect(button).toHaveAttribute("aria-current", "true");
+      await expect(button).toHaveCSS("background-color", "rgb(15, 15, 17)");
+      await expect(button).toHaveCSS("color", "rgb(243, 239, 232)");
+    });
+
+    test("activating a chapter while playing jumps and keeps playing; paused it plays", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await frame.getByRole("button", { name: c.play, exact: true }).click();
+      await page.clock.runFor(3_000);
+      await chapterButtons(page).nth(5).click();
+      await expect(timecode(page)).toHaveText("0:00:30");
+      await expect(frame).toHaveAttribute("data-running", "true");
+      await expect(activeButtons(page)).toHaveCount(1);
+      await expect(chapterButtons(page).nth(5)).toHaveAttribute("aria-current", "true");
+      await chapterButtons(page).nth(3).click();
+      await page.clock.runFor(2_100);
+      await frame.getByRole("button", { name: c.pause, exact: true }).click();
+      await expect(timecode(page)).toHaveText("0:00:20");
+      await expect(frame).toHaveAttribute("data-running", "false");
+      await chapterButtons(page).nth(1).click();
+      await expect(timecode(page)).toHaveText("0:00:06");
+      await expect(frame).toHaveAttribute("data-running", "true");
+    });
+
+    test("the active chapter button follows the film; none on the poster", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await expect(activeButtons(page)).toHaveCount(0);
+      await chapterButtons(page).nth(1).click();
+      await page.clock.runFor(4_100);
+      await expect(timecode(page)).toHaveText("0:00:10");
+      await expect(chapterButtons(page).nth(1)).toHaveAttribute("aria-current", "true");
+      await page.clock.runFor(2_100);
+      await expect(chapterButtons(page).nth(2)).toHaveAttribute("aria-current", "true");
+      await expect(chapterButtons(page).nth(1)).not.toHaveAttribute("aria-current", "true");
+      await expect(activeButtons(page)).toHaveCount(1);
+      await page.clock.runFor(30_000);
+      await expect(frame).toHaveAttribute("data-running", "false");
+      await expect(activeButtons(page)).toHaveCount(0);
+    });
+
+    test("the frame is a tab stop with its name; arrow keys jump chapters", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await expect(frame).toHaveAttribute("aria-label", FRAME_NAME[lang]);
+      await frame.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(timecode(page)).toHaveText("0:00:06");
+      await expect(shown(page)).toContainText(SHOTS[lang][1][0]);
+      await expect(frame).toHaveAttribute("data-running", "false");
+      await page.keyboard.press("ArrowLeft");
+      await expect(timecode(page)).toHaveText("0:00:00");
+      await expect(frame.getByText(c.poster, { exact: true })).toBeVisible();
+      await page.keyboard.press("ArrowLeft");
+      await expect(timecode(page)).toHaveText("0:00:00");
+    });
+
+    test("right arrow wraps to 0 from the last chapter, paused or playing", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await frame.focus();
+      for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowRight");
+      await expect(timecode(page)).toHaveText("0:00:30");
+      await page.keyboard.press("ArrowRight");
+      await expect(timecode(page)).toHaveText("0:00:00");
+      await expect(frame.getByText(c.poster, { exact: true })).toBeVisible();
+      await chapterButtons(page).nth(5).click();
+      await page.clock.runFor(1_000);
+      await frame.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(timecode(page)).toHaveText("0:00:00");
+      await expect(frame).toHaveAttribute("data-running", "true");
+      await expect(shown(page)).toContainText(SHOTS[lang][0][0]);
+    });
+
+    test("left arrow goes to the current or previous chapter start", async ({ page }) => {
+      await openWithClock(page, lang);
+      const frame = film(page);
+      await chapterButtons(page).nth(1).click();
+      await page.clock.runFor(1_500);
+      await frame.getByRole("button", { name: c.pause, exact: true }).click();
+      await expect(timecode(page)).toHaveText("0:00:07");
+      await frame.focus();
+      await page.keyboard.press("ArrowLeft");
+      await expect(timecode(page)).toHaveText("0:00:06");
+      await frame.getByRole("button", { name: c.play, exact: true }).click();
+      await page.clock.runFor(500);
+      await frame.getByRole("button", { name: c.pause, exact: true }).click();
+      await frame.focus();
+      await page.keyboard.press("ArrowLeft");
+      await expect(timecode(page)).toHaveText("0:00:00");
+    });
+
+    test("arrow keys on a chapter button do not move the film", async ({ page }) => {
+      await openWithClock(page, lang);
+      await chapterButtons(page).nth(1).click();
+      await page.clock.runFor(1_100);
+      await film(page).getByRole("button", { name: c.pause, exact: true }).click();
+      await expect(timecode(page)).toHaveText("0:00:07");
+      await chapterButtons(page).nth(4).focus();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowLeft");
+      await expect(timecode(page)).toHaveText("0:00:07");
+    });
+
+    test("the large play button leaves the tab order while playing; Tab leaves the frame", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const frame = film(page);
+      await frame.getByRole("button", { name: c.playVideo, exact: true }).click();
+      await expect(frame).toHaveAttribute("data-running", "true");
+      await frame.focus();
+      await page.keyboard.press("Tab");
+      await expect(frame.getByRole("button", { name: c.pause, exact: true })).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(chapterButtons(page).first()).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(frame.getByRole("button", { name: c.pause, exact: true })).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(frame).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(frame).not.toBeFocused();
+      await expect(frame.locator(":focus")).toHaveCount(0);
+    });
+
+    test("the shot swap is instant with the pause toggle while the timecode advances", async ({ page }) => {
+      await openWithClock(page, lang);
+      await page.getByRole("navigation").getByRole("button", { name: lang === "vi" ? "Dừng chuyển động" : "Pause motion" }).click();
+      const frame = film(page);
+      await frame.getByRole("button", { name: c.play, exact: true }).click();
+      await page.clock.runFor(6_100);
+      await expect(timecode(page)).toHaveText("0:00:06");
+      await expect(shown(page)).toContainText(SHOTS[lang][1][0]);
+      await expect(shown(page)).toHaveCSS("transition-duration", "0s");
+      await expect(shown(page)).toHaveCSS("opacity", "1");
     });
 
     test("the hero film link scrolls to the chapter and leaves the film on its poster", async ({ page }) => {

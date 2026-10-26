@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { chapterAt, FILM_DURATION } from "@/lib/chapters";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { CHAPTER_STARTS, chapterIndexAt, FILM_DURATION, nextStart, prevStart } from "@/lib/chapters";
 import { formatTimecode } from "@/lib/timecode";
 import styles from "../sections/film.module.css";
 
@@ -14,6 +14,7 @@ type FilmPlayerProps = {
     playVideo: string;
     play: string;
     pause: string;
+    frameLabel: string;
     keys: string;
   };
   chapters: { time: string; name: string; title: string; sub: string }[];
@@ -43,14 +44,32 @@ export function FilmPlayer({ strings, chapters }: FilmPlayerProps) {
   }, [playing]);
 
   const toggle = () => setPlaying((was) => !was);
+  const seek = (t: number) => {
+    elapsed.current = t;
+    setTime(t);
+  };
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "ArrowRight") seek(nextStart(time, CHAPTER_STARTS));
+    else if (e.key === "ArrowLeft") seek(prevStart(time, CHAPTER_STARTS));
+    else return;
+    e.preventDefault();
+  };
   const poster = !playing && time === 0;
-  const active = poster ? 0 : 1 + chapterAt(time);
+  const active = poster ? 0 : 1 + chapterIndexAt(time, CHAPTER_STARTS);
 
   return (
     <div>
-      <div className={styles.film} data-film data-running={String(playing)}>
+      <div
+        className={styles.film}
+        data-film
+        data-running={String(playing)}
+        role="group"
+        aria-label={strings.frameLabel}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+      >
         <div className={styles.screen}>
-          <div className={styles.shot} data-on={String(active === 0)} inert={active !== 0}>
+          <div className={styles.shot} data-on={String(active === 0)} aria-hidden={active !== 0} inert={active !== 0}>
             <div>
               <div className={styles.big}>
                 {strings.posterLead} <em>{strings.posterAccent}</em>
@@ -63,7 +82,7 @@ export function FilmPlayer({ strings, chapters }: FilmPlayerProps) {
             </div>
           </div>
           {chapters.map((c, i) => (
-            <div key={c.name} className={styles.shot} data-on={String(active === i + 1)} inert={active !== i + 1}>
+            <div key={c.name} className={styles.shot} data-on={String(active === i + 1)} aria-hidden={active !== i + 1} inert={active !== i + 1}>
               <div>
                 <div className={styles.big}>{c.title}</div>
                 <div className={`${styles.sub} mono`}>{c.sub}</div>
@@ -90,8 +109,16 @@ export function FilmPlayer({ strings, chapters }: FilmPlayerProps) {
         </div>
       </div>
       <div className={`${styles.chapters} mono`}>
-        {chapters.map((c) => (
-          <button key={c.name} type="button">
+        {chapters.map((c, i) => (
+          <button
+            key={c.name}
+            type="button"
+            aria-current={active === i + 1 ? "true" : undefined}
+            onClick={() => {
+              seek(CHAPTER_STARTS[i]);
+              setPlaying(true);
+            }}
+          >
             {c.time}
             <span>{c.name}</span>
           </button>

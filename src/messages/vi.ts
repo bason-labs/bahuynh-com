@@ -47,6 +47,7 @@ export const vi = {
     playVideo: "Phát video",
     play: "Phát",
     pause: "Dừng",
+    frameLabel: "Trình phát video. Phím mũi tên trái, phải để chuyển chương.",
     keys: "← → chương",
     chapters: [
       { name: "Bật TV", title: "Bật TV", sub: "kara.bahuynh.com/tv · mã phòng 7108" },
