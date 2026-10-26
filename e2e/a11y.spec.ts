@@ -29,7 +29,8 @@ for (const lang of ["vi", "en"] as const) {
       await expect(hero.getByText("On air").locator("..")).toHaveCSS("background-color", "rgb(255, 74, 43)");
       await expect(hero.getByText("On air").locator("..")).toHaveCSS("box-shadow", /rgba\(255, 74, 43, 0.45\)/);
       await expect(hero.locator('div[aria-hidden="true"]').last()).toHaveCSS("opacity", "1");
-      await expect(hero.locator("i")).toHaveCount(0, { timeout: 3500 });
+      // wait for the rings to clear (a 2.4 s timer); timing itself is checked in hero.spec.ts
+      await expect(hero.locator("i")).toHaveCount(0, { timeout: 10_000 });
       await checkAxe(page);
     });
   }

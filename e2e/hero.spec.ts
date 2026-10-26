@@ -290,6 +290,8 @@ for (const lang of ["vi", "en"] as const) {
     });
 
     test("each toggle makes three rings on the grille that are gone after 2.4 s", async ({ page }) => {
+      // ring removal is a 2.4 s timer: drive it with the fake clock so a slow CI machine cannot stretch it
+      await page.clock.install();
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
@@ -325,7 +327,8 @@ for (const lang of ["vi", "en"] as const) {
           expect(Math.abs(i.cx - (mic.x + 60))).toBeLessThanOrEqual(2);
           expect(Math.abs(i.cy - (mic.y + 50))).toBeLessThanOrEqual(2);
         }
-        await expect(rings).toHaveCount(0, { timeout: 3500 });
+        await page.clock.runFor(2_400);
+        await expect(rings).toHaveCount(0);
       }
     });
 
