@@ -34,4 +34,14 @@ export const en: Messages = {
     hint: "Drag to turn · tap to switch the mic on",
     onAir: "On air",
   },
+  marquee: [
+    "AI host",
+    "Spin a song",
+    "Shared queue",
+    "Scores",
+    "Reactions",
+    "Phone as remote",
+    "TV · Projector",
+    "Up next",
+  ],
 };

@@ -32,4 +32,14 @@ export const vi = {
     hint: "Kéo để xoay · chạm để bật micro",
     onAir: "On air",
   },
+  marquee: [
+    "MC AI",
+    "Quay bài",
+    "Hàng chờ chung",
+    "Chấm điểm",
+    "Thả cảm xúc",
+    "Điện thoại là micro",
+    "TV · Máy chiếu",
+    "Hát tiếp",
+  ],
 } as const;

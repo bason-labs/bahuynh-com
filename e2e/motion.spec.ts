@@ -118,3 +118,36 @@ test.describe("system asks for reduced motion", () => {
     });
   }
 });
+
+const marqueeState = (page: Page) =>
+  page.evaluate(() => {
+    const row = document.querySelector("[data-marquee]")!.firstElementChild!;
+    return { running: row.getAnimations().length, x: row.firstElementChild!.getBoundingClientRect().x };
+  });
+
+async function expectMarqueeStill(page: Page) {
+  const before = await marqueeState(page);
+  expect(before.running).toBe(0);
+  await page.waitForTimeout(2000);
+  expect((await marqueeState(page)).x).toBe(before.x);
+}
+
+test.describe("marquee under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  for (const lang of ["vi", "en"] as const) {
+    test(`${lang} marquee stays still`, async ({ page }) => {
+      await gotoPage(page, lang);
+      await expectMarqueeStill(page);
+    });
+  }
+});
+
+for (const lang of ["vi", "en"] as const) {
+  test(`${lang} marquee moves, then stops with the pause toggle`, async ({ page }) => {
+    await gotoPage(page, lang);
+    await expect.poll(async () => (await marqueeState(page)).running).toBe(1);
+    await page.getByRole("navigation").getByRole("button", { name: names[lang], exact: true }).click();
+    await expectMarqueeStill(page);
+  });
+}
