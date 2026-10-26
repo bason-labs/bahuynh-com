@@ -150,7 +150,8 @@ for (const lang of ["vi", "en"] as const) {
       await page.setViewportSize(VIEWPORTS.tablet);
       await gotoPage(page, lang);
       const seen: string[] = [];
-      for (let i = 0; i < 8; i++) {
+      // five stops cover the bar; the hero buttons after it are page content
+      for (let i = 0; i < 5; i++) {
         await page.keyboard.press("Tab");
         seen.push(await page.evaluate(() => document.activeElement?.getAttribute("href") ?? ""));
       }

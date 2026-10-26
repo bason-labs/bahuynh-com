@@ -17,6 +17,11 @@ try {
   const browser = await chromium.launch({
     args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
   });
+  // The first page a fresh browser renders pays a one-off start-up cost (about 2.8 s here, whichever
+  // page goes first); render the page once in a throwaway context so each measured page is equally cold.
+  const warm = await browser.newContext();
+  await (await warm.newPage()).goto(base + "/");
+  await warm.close();
   for (const path of ["/", "/en/"]) {
     const context = await browser.newContext({ viewport: { width: 375, height: 812 } });
     const page = await context.newPage();

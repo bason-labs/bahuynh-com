@@ -1,6 +1,7 @@
 import { Footer, Grain, SiteNav } from "@/components/site";
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/messages";
+import { Hero } from "./sections/Hero";
 
 export function LandingPage({ locale }: { locale: Locale }) {
   const t = getMessages(locale);
@@ -15,8 +16,8 @@ export function LandingPage({ locale }: { locale: Locale }) {
     <>
       <Grain />
       <SiteNav locale={locale} links={links} />
-      <main id="top">
-        <h1>{t.hero.title}</h1>
+      <main>
+        <Hero locale={locale} />
       </main>
       <Footer locale={locale} />
     </>
