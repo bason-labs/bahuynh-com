@@ -1,4 +1,4 @@
-import { expect, gotoPage, test, VIEWPORTS } from "./support";
+import { expect, gotoPage, skipTransitions, test, VIEWPORTS } from "./support";
 
 const copy = {
   vi: {
@@ -213,15 +213,16 @@ for (const lang of ["vi", "en"] as const) {
       const box = hero.getByText(c.label, { exact: true }).locator("..");
       const hint = hero.getByText(c.hint, { exact: true }).locator("..");
       const cone = hero.locator('div[aria-hidden="true"]').first();
+      await expect(box).toHaveCSS("transition-duration", "0.3s");
+      await expect(hint).toHaveCSS("transition-duration", "0.4s");
+      await skipTransitions(page);
       await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
       await expect(hero).toHaveAttribute("data-live", "true");
       await expect(box).toHaveCSS("background-color", RED);
       await expect(box).toHaveCSS("border-top-color", RED);
       await expect(box).toHaveCSS("color", "rgb(9, 9, 10)");
       await expect(box).toHaveCSS("box-shadow", "rgba(255, 74, 43, 0.45) 0px 0px 40px 0px");
-      await expect(box).toHaveCSS("transition-duration", "0.3s");
       await expect(hint).toHaveCSS("opacity", "0");
-      await expect(hint).toHaveCSS("transition-duration", "0.4s");
       await expect(cone).toHaveCSS("opacity", "1");
       await expect(cone).toHaveCSS("filter", "saturate(1.6) hue-rotate(-12deg)");
       await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
@@ -338,9 +339,10 @@ for (const lang of ["vi", "en"] as const) {
       const hero = page.locator("header#top");
       const lyric = hero.locator('div[aria-hidden="true"]').last();
       await expect(lyric).toHaveCSS("opacity", "0");
+      await expect(lyric).toHaveCSS("transition-duration", "0.4s");
+      await skipTransitions(page);
       await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
       await expect(lyric).toHaveCSS("opacity", "1");
-      await expect(lyric).toHaveCSS("transition-duration", "0.4s");
       const label = lyric.getByText(l.label, { exact: true });
       await expect(label).toHaveCSS("color", RED);
       await expect(label).toHaveCSS("font-family", /mono/i);
@@ -356,6 +358,7 @@ for (const lang of ["vi", "en"] as const) {
       await page.clock.install();
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
+      await skipTransitions(page);
       await page.clock.pauseAt(Date.now() + 60_000);
       const hero = page.locator("header#top");
       const sung = () =>
