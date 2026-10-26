@@ -114,7 +114,7 @@
 .lyric {
   margin-top: 8px;
   font: 600 18px / 1.4 var(--sans);
-  color: rgba(243, 239, 232, 0.35);
+  color: rgba(243, 239, 232, 0.5);
 }
 
 .sung {

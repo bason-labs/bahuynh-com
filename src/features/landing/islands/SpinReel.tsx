@@ -139,7 +139,7 @@ export function SpinReel({ strings, songs, lyrics, queue }: SpinReelProps) {
               <div className={styles.title} lang="vi">
                 {songs[landing.pick]}
               </div>
-              <div className={styles.lyric} lang="vi" aria-hidden="true" inert key={landing.id}>
+              <div className={styles.lyric} lang="vi" data-lyric key={landing.id}>
                 {words.map((word, i) => (
                   <Fragment key={i}>
                     {i > 0 && " "}

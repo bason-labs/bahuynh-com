@@ -309,7 +309,7 @@ async function expectReelLandsAtOnce(page: Page, lang: "vi" | "en") {
     expect(await page.evaluate(() => document.getAnimations().filter((a) => a instanceof CSSTransition).length)).toBe(0);
     // the TV colours the whole line at once and the new queue row does not slide
     const tv = page.locator("[data-tv]");
-    const words = await tv.locator('div[aria-hidden="true"]').evaluate((el) =>
+    const words = await tv.locator("[data-lyric]").evaluate((el) =>
       [...el.children].map((w) => getComputedStyle(w).color),
     );
     expect(words.length).toBeGreaterThan(0);

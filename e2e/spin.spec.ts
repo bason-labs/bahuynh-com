@@ -50,15 +50,27 @@ async function startTime(page: Page, lang: "vi" | "en") {
 }
 const tv = (page: Page) => page.locator("[data-tv]");
 const queueRows = (page: Page) => tv(page).getByRole("listitem");
-const lyric = (page: Page) => tv(page).locator('div[aria-hidden="true"]');
+const lyric = (page: Page) => tv(page).locator("[data-lyric]");
 const sungWords = (page: Page) =>
   lyric(page).evaluate((el) => {
     const words = [...el.children];
     return {
       sung: words.filter((w) => getComputedStyle(w).color === "rgb(243, 239, 232)").length,
-      dim: words.filter((w) => getComputedStyle(w).color === "rgba(243, 239, 232, 0.35)").length,
+      dim: words.filter((w) => getComputedStyle(w).color === "rgba(243, 239, 232, 0.5)").length,
       total: words.length,
     };
+  });
+/** WCAG contrast of the unsung word colour over the TV screen's own background. */
+const unsungContrast = (page: Page) =>
+  lyric(page).evaluate((el) => {
+    const lin = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    const parse = (c: string) => c.match(/[\d.]+/g)!.map(Number);
+    const lum = ([r, g, b]: number[]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const [r, g, b, a = 1] = parse(getComputedStyle(el.firstElementChild!).color);
+    const bg = parse(getComputedStyle(el.parentElement!).backgroundColor);
+    const mixed = [r, g, b].map((v, i) => v * a + bg[i] * (1 - a));
+    const [hi, lo] = [lum(mixed), lum(bg)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
   });
 const press = async (page: Page, lang: "vi" | "en", random: number) => {
   await page.evaluate((r) => {
@@ -278,6 +290,7 @@ for (const lang of ["vi", "en"] as const) {
       await expect(lyric(page)).toHaveText("Đèn đã lên rồi, mình về nhà thôi");
       await expect(lyric(page)).toHaveAttribute("lang", "vi");
       expect(await sungWords(page)).toEqual({ sung: 0, dim: 8, total: 8 });
+      expect(await unsungContrast(page)).toBeGreaterThanOrEqual(4.5);
       const announce = section(page).locator('[aria-live="polite"]');
       await expect(announce).toHaveText(lang === "vi" ? "Đang hát: Về Nhà Thôi" : "Now singing: Về Nhà Thôi");
     });
