@@ -1,4 +1,4 @@
-import { expect, gotoPage, test, VIEWPORTS } from "./support";
+import { expect, gotoPage, skipTransitions, test, VIEWPORTS } from "./support";
 
 const copy = {
   vi: {
@@ -184,3 +184,251 @@ for (const lang of ["vi", "en"] as const) {
     });
   });
 }
+
+const live = {
+  vi: {
+    mic: "Micro 3D. Kéo để xoay, chạm để bật.",
+    label: "● Đang hát · Phòng 7108",
+    line: "Nâng ly lên cười thật to nào, đêm nay ta hát cho nhau",
+  },
+  en: {
+    mic: "3D microphone. Drag to turn, tap to switch it on.",
+    label: "● Live · Room 7108",
+    line: "Raise your glass and laugh out loud, tonight we sing for each other",
+  },
+} as const;
+
+const RED = "rgb(255, 74, 43)";
+const tapAt = { desktop: { x: 720, y: 300 }, mobile: { x: 187, y: 300 } } as const;
+
+for (const lang of ["vi", "en"] as const) {
+  const c = copy[lang];
+  const l = live[lang];
+
+  test.describe(`hero live state on ${lang}`, () => {
+    test("a tap toggles live, with the label, hint and cone styles", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const box = hero.getByText(c.label, { exact: true }).locator("..");
+      const hint = hero.getByText(c.hint, { exact: true }).locator("..");
+      const cone = hero.locator('div[aria-hidden="true"]').first();
+      await expect(box).toHaveCSS("transition-duration", "0.3s");
+      await expect(hint).toHaveCSS("transition-duration", "0.4s");
+      await skipTransitions(page);
+      await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
+      await expect(hero).toHaveAttribute("data-live", "true");
+      await expect(box).toHaveCSS("background-color", RED);
+      await expect(box).toHaveCSS("border-top-color", RED);
+      await expect(box).toHaveCSS("color", "rgb(9, 9, 10)");
+      await expect(box).toHaveCSS("box-shadow", "rgba(255, 74, 43, 0.45) 0px 0px 40px 0px");
+      await expect(hint).toHaveCSS("opacity", "0");
+      await expect(cone).toHaveCSS("opacity", "1");
+      await expect(cone).toHaveCSS("filter", "saturate(1.6) hue-rotate(-12deg)");
+      await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
+      await expect(hero).toHaveAttribute("data-live", "false");
+      await expect(box).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await expect(box).toHaveCSS("color", "rgb(141, 139, 135)");
+      await expect(hint).toHaveCSS("opacity", "1");
+      await expect(cone).toHaveCSS("opacity", "0.75");
+    });
+
+    test("clicks on the hero's links, buttons and text never toggle", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      await page.evaluate(() => document.querySelectorAll("a").forEach((a) => a.addEventListener("click", (e) => e.preventDefault())));
+      for (const target of [
+        hero.getByRole("link", { name: c.open, exact: true }),
+        hero.getByRole("link", { name: c.film, exact: true }),
+        hero.getByRole("heading", { level: 1 }),
+        hero.getByText(c.lede, { exact: true }),
+        hero.getByText(c.meta[0], { exact: true }),
+        hero.getByText(c.hint, { exact: true }),
+        hero.getByText(c.label, { exact: true }),
+      ]) {
+        await target.click();
+        await expect(hero).toHaveAttribute("data-live", "false");
+      }
+      await expect(hero.locator("i")).toHaveCount(0);
+    });
+
+    test("a drag of 6 px does not toggle, 5 px does", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const { x, y } = tapAt.desktop;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 6, y, { steps: 3 });
+      await page.mouse.up();
+      await expect(hero).toHaveAttribute("data-live", "false");
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 5, y, { steps: 3 });
+      await page.mouse.up();
+      await expect(hero).toHaveAttribute("data-live", "true");
+    });
+
+    test("the mic control is a named toggle button, also without WebGL", async ({ page }) => {
+      await page.addInitScript(() => {
+        HTMLCanvasElement.prototype.getContext = () => null;
+      });
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const mic = hero.getByRole("button", { name: l.mic, exact: true });
+      await expect(mic).toHaveAttribute("aria-pressed", "false");
+      await expect(mic).toHaveAttribute("type", "button");
+      await mic.focus();
+      await page.keyboard.press("Enter");
+      await expect(mic).toHaveAttribute("aria-pressed", "true");
+      await expect(hero).toHaveAttribute("data-live", "true");
+      await expect(hero.locator("i")).toHaveCount(3);
+      await page.keyboard.press("Space");
+      await expect(mic).toHaveAttribute("aria-pressed", "false");
+      await expect(hero).toHaveAttribute("data-live", "false");
+    });
+
+    test("each toggle makes three rings on the grille that are gone after 2.4 s", async ({ page }) => {
+      // ring removal is a 2.4 s timer: drive it with the fake clock so a slow CI machine cannot stretch it
+      await page.clock.install();
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const rings = hero.locator("i");
+      for (const expected of ["true", "false"]) {
+        await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
+        await expect(hero).toHaveAttribute("data-live", expected);
+        await expect(rings).toHaveCount(3);
+        const info = await rings.evaluateAll((els) =>
+          els.map((el) => {
+            const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return {
+              delay: s.animationDelay,
+              duration: s.animationDuration,
+              timing: s.animationTimingFunction,
+              border: `${s.borderTopWidth} ${s.borderTopStyle} ${s.borderTopColor}`,
+              events: s.pointerEvents,
+              hidden: el.getAttribute("aria-hidden"),
+              cx: r.x + r.width / 2,
+              cy: r.y + r.height / 2,
+            };
+          }),
+        );
+        const mic = (await hero.locator("[data-mic]").boundingBox())!;
+        expect(info.map((i) => i.delay)).toEqual(["0s", "0.25s", "0.5s"]);
+        for (const i of info) {
+          expect(i.duration).toBe("1.6s");
+          expect(i.timing).toBe("ease-out");
+          expect(i.border).toBe(`1px solid ${RED}`);
+          expect(i.events).toBe("none");
+          expect(i.hidden).toBe("true");
+          expect(Math.abs(i.cx - (mic.x + 60))).toBeLessThanOrEqual(2);
+          expect(Math.abs(i.cy - (mic.y + 50))).toBeLessThanOrEqual(2);
+        }
+        await page.clock.runFor(2_400);
+        await expect(rings).toHaveCount(0);
+      }
+    });
+
+    test("the lyric shows its label and 13 dim words, hidden from the accessibility tree", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      const lyric = hero.locator('div[aria-hidden="true"]').last();
+      await expect(lyric).toHaveCSS("opacity", "0");
+      await expect(lyric).toHaveCSS("transition-duration", "0.4s");
+      await skipTransitions(page);
+      await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
+      await expect(lyric).toHaveCSS("opacity", "1");
+      const label = lyric.getByText(l.label, { exact: true });
+      await expect(label).toHaveCSS("color", RED);
+      await expect(label).toHaveCSS("font-family", /mono/i);
+      await expect(lyric).toContainText(l.line);
+      await expect(lyric.getByText(l.line.split(" ").at(-1)!, { exact: true })).toHaveCSS("color", "rgba(243, 239, 232, 0.5)");
+      const words = lyric.getByText(/\S/).filter({ hasNot: page.locator("span") });
+      await expect(words).toHaveCount(14);
+      expect(l.line.split(" ")).toHaveLength(13);
+      expect(await hero.ariaSnapshot()).not.toContain(l.line.split(" ")[0]);
+    });
+
+    test("words are sung 330 ms apart, restart after the last, and reset when idle", async ({ page }) => {
+      await page.clock.install();
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      await skipTransitions(page);
+      await page.clock.pauseAt(Date.now() + 60_000);
+      const hero = page.locator("header#top");
+      const sung = () =>
+        hero.evaluate((h) => {
+          const lyric = [...h.querySelectorAll('div[aria-hidden="true"]')].at(-1)!;
+          return [...lyric.children].slice(1).filter((w) => getComputedStyle(w).color === "rgb(243, 239, 232)").length;
+        });
+      await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
+      await expect(hero).toHaveAttribute("data-live", "true");
+      await page.waitForTimeout(200);
+      await page.clock.runFor(329);
+      await page.waitForTimeout(100);
+      expect(await sung()).toBe(0);
+      await page.clock.runFor(1);
+      await expect.poll(sung).toBe(1);
+      await page.clock.runFor(4290 - 330);
+      await expect.poll(sung).toBe(13);
+      await page.clock.runFor(330);
+      await expect.poll(sung).toBe(0);
+      await page.clock.runFor(330);
+      await expect.poll(sung).toBe(1);
+      await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
+      await expect(hero).toHaveAttribute("data-live", "false");
+      await expect.poll(sung).toBe(0);
+      await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
+      await page.waitForTimeout(200);
+      await page.clock.runFor(330);
+      await expect.poll(sung).toBe(1);
+    });
+
+    test("lyric sits above the h1 on a phone and right of the copy on desktop", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.mobile);
+      await gotoPage(page, lang);
+      const hero = page.locator("header#top");
+      await page.mouse.click(tapAt.mobile.x, tapAt.mobile.y);
+      await expect(hero).toHaveAttribute("data-live", "true");
+      const lyric = hero.locator('div[aria-hidden="true"]').last();
+      await expect(lyric).toHaveCSS("opacity", "1");
+      const lb = (await lyric.boundingBox())!;
+      const h1 = (await hero.getByRole("heading", { level: 1 }).boundingBox())!;
+      expect(lb.y + lb.height).toBeLessThanOrEqual(h1.y);
+      expect(lb.x).toBeLessThan(h1.x + 40);
+      await expect(lyric).toHaveCSS("text-align", "left");
+      await expect(lyric.getByText(l.line.split(" ").at(-1)!, { exact: true })).toHaveCSS("color", "rgba(243, 239, 232, 0.5)");
+      await expect(hero.getByText(c.hint, { exact: true }).locator("..")).toHaveCSS("opacity", "0");
+
+      await page.setViewportSize(VIEWPORTS.desktop);
+      const copyCol = (await hero.getByRole("heading", { level: 1 }).locator("..").boundingBox())!;
+      const lyricDesktop = (await lyric.boundingBox())!;
+      expect(lyricDesktop.x).toBeGreaterThanOrEqual(copyCol.x + copyCol.width);
+    });
+  });
+}
+
+test.describe("touch swipe on the mic", () => {
+  test.use({ hasTouch: true, viewport: VIEWPORTS.mobile });
+
+  test("a 300 px swipe up scrolls the page and does not toggle", async ({ page }) => {
+    await gotoPage(page, "vi");
+    const hero = page.locator("header#top");
+    const client = await page.context().newCDPSession(page);
+    const touch = (type: "touchStart" | "touchMove" | "touchEnd", y: number) =>
+      client.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: type === "touchEnd" ? [] : [{ x: 187, y }],
+      });
+    await touch("touchStart", 600);
+    for (let y = 600; y >= 300; y -= 30) await touch("touchMove", y);
+    await touch("touchEnd", 300);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    await expect(hero).toHaveAttribute("data-live", "false");
+  });
+});

@@ -31,6 +31,9 @@ export const vi = {
     free: "Miễn phí để bắt đầu",
     hint: "Kéo để xoay · chạm để bật micro",
     onAir: "On air",
+    micLabel: "Micro 3D. Kéo để xoay, chạm để bật.",
+    lyricLabel: "● Đang hát · Phòng 7108",
+    lyric: "Nâng ly lên cười thật to nào, đêm nay ta hát cho nhau",
   },
   marquee: [
     "MC AI",

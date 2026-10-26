@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/messages";
+import { HeroLyric } from "../islands/HeroLyric";
 import styles from "./hero.module.css";
 
 export function HeroSide({ locale }: { locale: Locale }) {
@@ -10,7 +11,7 @@ export function HeroSide({ locale }: { locale: Locale }) {
         <b />
         <span>{t.hint}</span>
       </div>
-      <div className={styles.lyric} aria-hidden="true" />
+      <HeroLyric label={t.lyricLabel} line={t.lyric} />
     </div>
   );
 }

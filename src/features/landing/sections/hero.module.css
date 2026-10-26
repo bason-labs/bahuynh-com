@@ -23,6 +23,14 @@
   );
   clip-path: polygon(42% 0, 58% 0, 86% 100%, 14% 100%);
   opacity: 0.75;
+  transition:
+    opacity 0.6s,
+    filter 0.6s;
+}
+
+.hero[data-live="true"] .cone {
+  opacity: 1;
+  filter: saturate(1.6) hue-rotate(-12deg);
 }
 
 .word {
@@ -130,6 +138,18 @@
   padding: 6px 12px;
   border: 1px solid var(--line-2);
   color: var(--muted);
+  transition: all 0.3s;
+}
+
+.hero[data-live="true"] .onair {
+  color: var(--bg);
+  background: var(--air);
+  border-color: var(--air);
+  box-shadow: 0 0 40px rgba(255, 74, 43, 0.45);
+}
+
+.hero[data-live="true"] .hint {
+  opacity: 0;
 }
 
 .lyric {
@@ -137,6 +157,62 @@
   opacity: 0;
   transition: opacity 0.4s;
   pointer-events: none;
+}
+
+.hero[data-live="true"] .lyric {
+  opacity: 1;
+}
+
+.lyricLabel {
+  display: block;
+  font: 500 11px / 1.4 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--air);
+  margin-bottom: 8px;
+}
+
+.w {
+  color: rgba(243, 239, 232, 0.5);
+  transition: color 0.15s;
+}
+
+.sung {
+  color: var(--fg);
+  text-shadow: 0 0 18px rgba(255, 74, 43, 0.55);
+}
+
+.micControl {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.micControl:focus-visible {
+  outline-offset: -6px;
+}
+
+.ring {
+  position: absolute;
+  z-index: 3;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  border: 1px solid var(--air);
+  pointer-events: none;
+  animation: ring 1.6s ease-out forwards;
+}
+
+@keyframes ring {
+  to {
+    transform: scale(60);
+    opacity: 0;
+  }
 }
 
 .fallback {

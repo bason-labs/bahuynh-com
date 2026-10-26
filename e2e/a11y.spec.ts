@@ -1,4 +1,4 @@
-import { checkAxe, expect, gotoPage, test, VIEWPORTS } from "./support";
+import { checkAxe, expect, gotoPage, skipTransitions, test, VIEWPORTS } from "./support";
 
 // Later specs import checkAxe from ./support; it is re-exported here for the ticket's interface.
 export { checkAxe };
@@ -17,6 +17,21 @@ for (const lang of ["vi", "en"] as const) {
       const toggle = page.getByRole("button", { name: lang === "vi" ? "Dừng chuyển động" : "Pause motion" });
       await toggle.click();
       await expect(toggle).toHaveAttribute("aria-pressed", "true");
+      await checkAxe(page);
+    });
+
+    test(`axe finds no violation on ${lang} at ${key} with the hero live`, async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS[key]);
+      await gotoPage(page, lang);
+      await skipTransitions(page);
+      const hero = page.locator("header#top");
+      await page.mouse.click(VIEWPORTS[key].width / 2, 300);
+      await expect(hero).toHaveAttribute("data-live", "true");
+      await expect(hero.getByText("On air").locator("..")).toHaveCSS("background-color", "rgb(255, 74, 43)");
+      await expect(hero.getByText("On air").locator("..")).toHaveCSS("box-shadow", /rgba\(255, 74, 43, 0.45\)/);
+      await expect(hero.locator('div[aria-hidden="true"]').last()).toHaveCSS("opacity", "1");
+      // wait for the rings to clear (a 2.4 s timer); timing itself is checked in hero.spec.ts
+      await expect(hero.locator("i")).toHaveCount(0, { timeout: 10_000 });
       await checkAxe(page);
     });
   }

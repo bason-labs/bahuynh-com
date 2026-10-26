@@ -44,3 +44,14 @@ export async function checkAxe(page: Page) {
     .analyze();
   expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
 }
+
+/**
+ * Makes CSS transitions finish at once. Use it where a test checks an end state, not the motion:
+ * a loaded CI runner can stall a transition part-way for seconds. Assert any `transition-*` values
+ * before calling it.
+ */
+export async function skipTransitions(page: Page) {
+  await page.addStyleTag({
+    content: "*, *::before, *::after { transition-duration: 0s !important; transition-delay: 0s !important; }",
+  });
+}
