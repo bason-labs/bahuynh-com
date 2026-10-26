@@ -1,4 +1,4 @@
-import { expectGl, throttleFrames, withoutWebGl } from "./mic";
+import { expectGl, readPose, throttleFrames, withoutWebGl } from "./mic";
 import { checkAxe, expect, gotoPage, skipTransitions, test, VIEWPORTS } from "./support";
 
 // Later specs import checkAxe from ./support; it is re-exported here for the ticket's interface.
@@ -47,6 +47,25 @@ for (const lang of ["vi", "en"] as const) {
       await page.setViewportSize(VIEWPORTS[key]);
       await gotoPage(page, lang);
       await expectGl(page, "3d");
+      await checkAxe(page);
+    });
+  }
+}
+
+// The live glow and its rings, with the 3D mic running.
+for (const lang of ["vi", "en"] as const) {
+  for (const key of ["mobile", "tablet", "desktop"] as const) {
+    test(`axe finds no violation on ${lang} at ${key} with the 3D mic live`, async ({ page }) => {
+      await throttleFrames(page);
+      await page.setViewportSize(VIEWPORTS[key]);
+      await gotoPage(page, lang);
+      await expectGl(page, "3d");
+      await skipTransitions(page);
+      const { rect } = await readPose(page);
+      await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      const hero = page.locator("header#top");
+      await expect(hero).toHaveAttribute("data-live", "true");
+      await expect(hero.locator("i")).toHaveCount(0, { timeout: 10_000 });
       await checkAxe(page);
     });
   }

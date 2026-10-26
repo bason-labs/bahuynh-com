@@ -130,6 +130,13 @@ test.describe("interaction in the fallback", () => {
     expect(await hero(page).locator("[data-mic]").evaluate((el) => el.getBoundingClientRect().top)).toBe(mic.y - 300);
   });
 
+  test("the hero's cursor stays a pointer and touch-action leaves vertical panning", async ({ page }) => {
+    await expectCssMic(page);
+    const button = hero(page).getByRole("button");
+    await expect(button).toHaveCSS("cursor", "pointer");
+    await expect(button).toHaveCSS("touch-action", "pan-y");
+  });
+
   test("a click, Enter and Space toggle live, and the rings start at the CSS grille", async ({ page }) => {
     const mic = await expectCssMic(page);
     const h = hero(page);
@@ -148,5 +155,25 @@ test.describe("interaction in the fallback", () => {
     await page.keyboard.press("Space");
     await expect(h).toHaveAttribute("data-live", "true");
     await expect(button).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+test.describe("on a touch screen in the fallback", () => {
+  test.use({ hasTouch: true });
+  test("a 300 px swipe up from the hero scrolls the page and does not toggle live", async ({ page }) => {
+    await withoutWebGl(page);
+    await page.setViewportSize(VIEWPORTS.mobile);
+    await gotoPage(page, "en");
+    await expectCssMic(page);
+    await page.evaluate(() => (document.body.style.minHeight = "4000px"));
+    const touch = await page.context().newCDPSession(page);
+    const at = (y: number) => [{ x: 187, y, id: 1 }];
+    await touch.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: at(500) });
+    for (let i = 1; i <= 10; i++) {
+      await touch.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: at(500 - i * 30) });
+    }
+    await touch.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    await expect(hero(page)).toHaveAttribute("data-live", "false");
   });
 });
