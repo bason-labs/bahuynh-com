@@ -80,6 +80,9 @@ export const vi = {
     room: "Phòng 7108",
     empty: "Hàng chờ trống",
     queueLabel: "Hàng chờ",
+    live: "Đang hát",
+    you: "Bạn",
+    announce: "Đang hát: {song}",
     songs: [
       "Cụng Ly Nào",
       "Mây Lang Thang",
@@ -89,6 +92,16 @@ export const vi = {
       "Mưa Phố Nhỏ",
       "Hát Tiếp Đi",
       "Phố Đêm",
+    ],
+    lyrics: [
+      "Nâng ly lên cười thật to nào",
+      "Mây trôi qua phố, gió đưa em về",
+      "Đèn đã lên rồi, mình về nhà thôi",
+      "Nắng qua hiên, mình ngồi bên nhau",
+      "Đêm nay hát, hát cho nhau nghe",
+      "Mưa rơi trên phố nhỏ quen",
+      "Hát tiếp đi, đừng để đêm tàn",
+      "Phố đêm sáng đèn, ta hát vang",
     ],
     queue: [
       { song: "Mây Lang Thang", who: "Lan" },

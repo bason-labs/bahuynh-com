@@ -48,6 +48,27 @@ async function startTime(page: Page, lang: "vi" | "en") {
   await page.evaluate(() => document.querySelectorAll("canvas").forEach((c) => (c.style.display = "none")));
   await section(page).scrollIntoViewIfNeeded();
 }
+const tv = (page: Page) => page.locator("[data-tv]");
+const queueRows = (page: Page) => tv(page).getByRole("listitem");
+const lyric = (page: Page) => tv(page).locator('div[aria-hidden="true"]');
+const sungWords = (page: Page) =>
+  lyric(page).evaluate((el) => {
+    const words = [...el.children];
+    return {
+      sung: words.filter((w) => getComputedStyle(w).color === "rgb(243, 239, 232)").length,
+      dim: words.filter((w) => getComputedStyle(w).color === "rgba(243, 239, 232, 0.35)").length,
+      total: words.length,
+    };
+  });
+const press = async (page: Page, lang: "vi" | "en", random: number) => {
+  await page.evaluate((r) => {
+    Math.random = () => r;
+  }, random);
+  // the fake clock is paused, so Playwright's rAF-based stability wait would hang
+  await button(page, lang).dispatchEvent("click");
+  await page.clock.runFor(3300);
+  await expect(hits(page)).toHaveCount(1);
+};
 const colours = (page: Page) =>
   rows(page).evaluateAll((els) => els.map((el) => getComputedStyle(el).color));
 const shiftY = (list: Locator) =>
@@ -217,7 +238,8 @@ for (const lang of ["vi", "en"] as const) {
       await page.clock.runFor(2400);
       await expect(hits(page)).toHaveCount(1);
       expect(before).toBeLessThan(0);
-      await expect(page.locator("[data-tv]").getByRole("listitem")).toHaveCount(2);
+      // one landing, one new row: the presses while spinning added none
+      await expect(page.locator("[data-tv]").getByRole("listitem")).toHaveCount(3);
     });
 
     test("after a landing it spins and lands again, the same song may win twice", async ({ page }) => {
@@ -239,6 +261,93 @@ for (const lang of ["vi", "en"] as const) {
       };
       expect(await winner()).toBe("Về Nhà Thôi");
       expect(await winner()).toBe("Về Nhà Thôi");
+    });
+
+    test("landing on a song: TV label, title and unsung line, queue row and announcement", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await freezeTime(page);
+      await startTime(page, lang);
+      await press(page, lang, 0.3);
+      await expect(tv(page).getByText(c.room, { exact: true })).toHaveCount(0);
+      const live = tv(page).getByText(lang === "vi" ? "● Đang hát" : "● Now singing", { exact: true });
+      await expect(live).toHaveCSS("color", "rgb(255, 74, 43)");
+      const title = tv(page).getByText("Về Nhà Thôi", { exact: true }).first();
+      await expect(title).toHaveCSS("text-transform", "uppercase");
+      await expect(title).toHaveCSS("font-family", /archivo/i);
+      await expect(title).toHaveAttribute("lang", "vi");
+      await expect(lyric(page)).toHaveText("Đèn đã lên rồi, mình về nhà thôi");
+      await expect(lyric(page)).toHaveAttribute("lang", "vi");
+      expect(await sungWords(page)).toEqual({ sung: 0, dim: 8, total: 8 });
+      const announce = section(page).locator('[aria-live="polite"]');
+      await expect(announce).toHaveText(lang === "vi" ? "Đang hát: Về Nhà Thôi" : "Now singing: Về Nhà Thôi");
+    });
+
+    test("the line fills one word per 380 ms, then stays coloured", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await freezeTime(page);
+      await startTime(page, lang);
+      await press(page, lang, 0.3);
+      await page.clock.runFor(379);
+      expect((await sungWords(page)).sung).toBe(0);
+      await page.clock.runFor(1);
+      expect((await sungWords(page)).sung).toBe(1);
+      // the line has 8 words, see Q-0001-46
+      await page.clock.runFor(2659);
+      expect((await sungWords(page)).sung).toBe(7);
+      await page.clock.runFor(1);
+      expect(await sungWords(page)).toEqual({ sung: 8, dim: 0, total: 8 });
+      await page.clock.runFor(6000);
+      expect(await sungWords(page)).toEqual({ sung: 8, dim: 0, total: 8 });
+    });
+
+    test("the queue puts each landed song on top as Bạn / You, three rows at most", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await freezeTime(page);
+      await startTime(page, lang);
+      const you = lang === "vi" ? "Bạn" : "You";
+      await press(page, lang, 0.3);
+      await expect(queueRows(page)).toHaveCount(3);
+      await expect(queueRows(page).nth(0)).toHaveText(`Về Nhà Thôi${you}`);
+      await expect(queueRows(page).nth(1)).toHaveText("Mây Lang ThangLan");
+      await expect(queueRows(page).nth(2)).toHaveText("Đêm Nay HátMinh");
+      const fresh = queueRows(page).nth(0);
+      await expect(fresh).toHaveCSS("animation-duration", "0.5s");
+      await expect(fresh).toHaveCSS("animation-timing-function", "ease");
+      await expect(fresh).toHaveCSS("color", FG);
+      await expect(queueRows(page).nth(1)).toHaveCSS("animation-name", "none");
+      const from = await fresh.evaluate((el) => {
+        const frame = (el.getAnimations()[0].effect as KeyframeEffect).getKeyframes()[0];
+        return [frame.transform, frame.opacity];
+      });
+      expect(from).toEqual(["translateY(-8px)", "0"]);
+      await press(page, lang, 0.95);
+      await expect(queueRows(page)).toHaveCount(3);
+      await expect(queueRows(page).nth(0)).toHaveText(`Phố Đêm${you}`);
+      await expect(queueRows(page).nth(1)).toHaveText(`Về Nhà Thôi${you}`);
+      await expect(queueRows(page).nth(2)).toHaveText("Mây Lang ThangLan");
+      const langs = await tv(page).locator("li > span:first-child").evaluateAll((els) => els.map((el) => el.getAttribute("lang")));
+      expect(langs).toEqual(["vi", "vi", "vi"]);
+    });
+
+    test("a new spin leaves the TV on its song until the reel lands, then starts the new line unsung", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await freezeTime(page);
+      await startTime(page, lang);
+      await press(page, lang, 0.3);
+      await page.clock.runFor(1140);
+      expect((await sungWords(page)).sung).toBe(3);
+      await page.evaluate(() => {
+        Math.random = () => 0.95;
+      });
+      await button(page, lang).dispatchEvent("click");
+      await page.clock.runFor(3000);
+      await expect(tv(page).getByText("Về Nhà Thôi", { exact: true }).first()).toBeVisible();
+      await expect(lyric(page)).toHaveText("Đèn đã lên rồi, mình về nhà thôi");
+      expect((await sungWords(page)).sung).toBeGreaterThanOrEqual(3);
+      await page.clock.runFor(300);
+      await expect(hits(page)).toHaveCount(1);
+      await expect(lyric(page)).toHaveText("Phố đêm sáng đèn, ta hát vang");
+      expect(await sungWords(page)).toEqual({ sung: 0, dim: 7, total: 7 });
     });
   });
 }

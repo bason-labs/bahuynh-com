@@ -307,6 +307,18 @@ async function expectReelLandsAtOnce(page: Page, lang: "vi" | "en") {
     const shift = await list.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m42);
     expect(shift).toBe(-(index - 1) * 110);
     expect(await page.evaluate(() => document.getAnimations().filter((a) => a instanceof CSSTransition).length)).toBe(0);
+    // the TV colours the whole line at once and the new queue row does not slide
+    const tv = page.locator("[data-tv]");
+    const words = await tv.locator('div[aria-hidden="true"]').evaluate((el) =>
+      [...el.children].map((w) => getComputedStyle(w).color),
+    );
+    expect(words.length).toBeGreaterThan(0);
+    expect(new Set(words)).toEqual(new Set(["rgb(243, 239, 232)"]));
+    const row = tv.getByRole("listitem").first();
+    await expect(row).toHaveCSS("animation-name", "none");
+    await expect(row).toHaveCSS("color", "rgb(243, 239, 232)");
+    expect(await row.evaluate((el) => el.getAnimations().length)).toBe(0);
+    await expect(tv.getByRole("listitem")).toHaveCount(Math.min(2 + press + 1, 3));
   }
 }
 

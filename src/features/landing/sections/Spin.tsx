@@ -18,8 +18,12 @@ export function Spin({ locale }: { locale: Locale }) {
             room: t.room,
             empty: t.empty,
             queueLabel: t.queueLabel,
+            live: t.live,
+            you: t.you,
+            announce: t.announce,
           }}
           songs={t.songs}
+          lyrics={t.lyrics}
           queue={t.queue}
         />
       </div>

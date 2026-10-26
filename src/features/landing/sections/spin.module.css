@@ -107,6 +107,29 @@
   color: var(--muted);
 }
 
+.live {
+  color: var(--air);
+}
+
+.lyric {
+  margin-top: 8px;
+  font: 600 18px / 1.4 var(--sans);
+  color: rgba(243, 239, 232, 0.35);
+}
+
+.sung {
+  color: var(--fg);
+}
+
+.announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .title {
   font: 800 clamp(22px, 2.4vw, 32px) / 1.1 var(--display);
   font-variation-settings: "wdth" 110;
@@ -131,6 +154,21 @@
   border-bottom: 1px solid var(--line);
   font-size: 14px;
   color: var(--muted);
+}
+
+.queue li[data-new="true"] {
+  color: var(--fg);
+}
+
+.queue li[data-slide="true"] {
+  animation: slide 0.5s ease;
+}
+
+@keyframes slide {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
 @media (max-width: 900px) {

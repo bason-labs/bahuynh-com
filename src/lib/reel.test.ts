@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickSong, REEL_REPEATS, reelStart, reelTarget, rowShift, SONG_COUNT } from "./reel";
+import { pickSong, pushQueue, REEL_REPEATS, reelStart, reelTarget, rowShift, SONG_COUNT } from "./reel";
 
 function seeded(seed: number) {
   let a = seed;
@@ -50,5 +50,23 @@ describe("reelTarget and reelStart", () => {
   it("shifts so row i is the middle one", () => {
     expect(rowShift(1)).toBe(0);
     expect(rowShift(48)).toBe(47);
+  });
+});
+
+describe("pushQueue", () => {
+  const rest = ["Mây Lang Thang · Lan", "Đêm Nay Hát · Minh"];
+
+  it("puts the song on top of the queue at rest", () => {
+    expect(pushQueue(rest, "Về Nhà Thôi · Bạn")).toEqual(["Về Nhà Thôi · Bạn", ...rest]);
+  });
+
+  it("keeps at most three rows, dropping the bottom one", () => {
+    const first = pushQueue(rest, "Về Nhà Thôi · Bạn");
+    expect(pushQueue(first, "Phố Đêm · Bạn")).toEqual(["Phố Đêm · Bạn", "Về Nhà Thôi · Bạn", "Mây Lang Thang · Lan"]);
+  });
+
+  it("honours another maximum and leaves the input alone", () => {
+    expect(pushQueue(rest, "x", 2)).toEqual(["x", rest[0]]);
+    expect(rest).toHaveLength(2);
   });
 });
