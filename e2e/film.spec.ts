@@ -328,7 +328,7 @@ for (const lang of ["vi", "en"] as const) {
       await check(SHOTS[lang][1][0]);
       await page.clock.runFor(11_000);
       await check(SHOTS[lang][2][0]);
-      await page.clock.runFor(18_900);
+      await page.clock.runFor(18_800);
       await check(SHOTS[lang][5][0]);
       await expect(page.getByRole("button", { name: c.playVideo, exact: true })).toHaveCount(0);
     });
