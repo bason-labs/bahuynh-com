@@ -285,13 +285,19 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       await page.waitForLoadState("networkidle");
       const requests: string[] = [];
-      page.on("request", (r) => requests.push(r.url()));
+      // a request that sends something; the site's own static chunks (the lazy 3D mic) only fetch code
+      page.on("request", (r) => {
+        if (!new URL(r.url()).pathname.startsWith("/_next/static/")) requests.push(r.url());
+      });
       const stored = () =>
         page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]));
       const before = await stored();
       await setRandom(page, 0.99);
-      for (let i = 0; i < 20; i++) await sceneOf(page).getByRole("button", { name: sc.buttons[0], exact: true }).click();
-      expect(num(await counter(page).textContent())).toBeGreaterThanOrEqual(1300);
+      // dispatched clicks: the test is about storage and requests, and a loaded machine can starve the
+      // animation frames Playwright's "stable" check waits on
+      const clap = sceneOf(page).getByRole("button", { name: sc.buttons[0], exact: true });
+      for (let i = 0; i < 20; i++) await clap.dispatchEvent("click");
+      await expect.poll(async () => num(await counter(page).textContent())).toBeGreaterThanOrEqual(1300);
       expect(await stored()).toBe(before);
       expect(requests).toEqual([]);
       await gotoPage(page, lang);

@@ -70,7 +70,7 @@ test("500 dust particles rise and wrap from top to bottom", async ({ page }) => 
 });
 
 test("the idle turn is 0.0025 rad per rendered frame, the height bobs by 0.06 and the loop stops off screen", async ({ page }) => {
-  test.setTimeout(45_000);
+  test.setTimeout(75_000);
   await page.setViewportSize(SMALL_DESKTOP);
   await gotoPage(page, "en");
   await expectGl(page, "3d");
@@ -86,11 +86,18 @@ test("the idle turn is 0.0025 rad per rendered frame, the height bobs by 0.06 an
   expect(Math.abs(perFrame - 0.0025)).toBeLessThanOrEqual(0.0025 * 0.2);
   expect(b.yaw - a.yaw).toBeCloseTo(b.idleYaw - a.idleYaw, 6);
   // A bob period is 7.85 s.
+  // Sample until both the top and the bottom of the bob have been rendered: on a slow CI runner
+  // frames are sparse, so a fixed sample window can miss the peaks.
   const heights: number[] = [];
-  for (let i = 0; i < 90; i++) {
-    heights.push((await readPose(page)).height);
-    await page.waitForTimeout(100);
-  }
+  await expect
+    .poll(
+      async () => {
+        heights.push((await readPose(page)).height);
+        return Math.min(Math.max(...heights) - a.restHeight, a.restHeight - Math.min(...heights));
+      },
+      { timeout: 30_000, intervals: [100] },
+    )
+    .toBeGreaterThan(0.05);
   expect(Math.max(...heights) - a.restHeight).toBeGreaterThan(0.05);
   expect(Math.max(...heights) - a.restHeight).toBeLessThanOrEqual(0.0601);
   expect(a.restHeight - Math.min(...heights)).toBeGreaterThan(0.05);
@@ -141,7 +148,8 @@ const FAST = { tag: "@fast" } as const;
 
 const mouseTo = (page: Page, x: number, y: number) => page.mouse.move(x, y);
 const heroBox = async (page: Page) => (await hero(page).boundingBox())!;
-const frameIs = (page: Page, atLeast: number) => expect.poll(async () => (await readPose(page)).frame, { timeout: 60_000 }).toBeGreaterThanOrEqual(atLeast);
+// The CI runner's software WebGL can draw as few as 4 frames a second, so frame-count waits get minutes, not seconds.
+const frameIs = (page: Page, atLeast: number) => expect.poll(async () => (await readPose(page)).frame, { timeout: 180_000 }).toBeGreaterThanOrEqual(atLeast);
 /** Waits until the animation loop has drawn `n` more frames than `since`. */
 const afterFrames = (page: Page, since: number, n: number) => frameIs(page, since + n);
 
@@ -159,7 +167,7 @@ async function openFollow(page: Page, lang: "vi" | "en" = "en") {
 }
 
 test("follow: resting at the hero centre leaves 0 offset; the edges give +-0.3 and +-0.175", FAST, async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(480_000);
   await openFollow(page);
   const box = await heroBox(page);
   const cx = box.x + box.width / 2;
@@ -180,7 +188,7 @@ test("follow: resting at the hero centre leaves 0 offset; the edges give +-0.3 a
 });
 
 test("follow: covers 90 % of a jump in 38 frames and holds its value when the pointer leaves", FAST, async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(360_000);
   await openFollow(page);
   const box = await heroBox(page);
   await mouseTo(page, box.x + box.width / 2, box.y + box.height / 2);
@@ -226,7 +234,7 @@ test("drag: 100 px right turns the mic 1.0 rad, 100 px left turns it back, and t
 
 for (const [name, dx, sign] of [["right", 20, 1], ["left", -20, -1]] as const) {
   test(`drag: after releasing a 20 px ${name} move the spin slows by 0.94 a frame to under 0.001 rad`, FAST, async ({ page }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(180_000);
     await openFollow(page);
     const { x, y } = await micPoint(page);
     await mouseTo(page, x, y);
@@ -310,7 +318,7 @@ test("scroll: the offsets follow the scroll distance up to one viewport and retu
 });
 
 test("glow: going live eases in over about 0.5 s and going idle eases back out, never reversing", FAST, async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(420_000);
   await openFollow(page);
   await page.evaluate(() => {
     const w = window as unknown as { samples: { frame: number; glow: number }[] };
@@ -342,13 +350,13 @@ test("glow: going live eases in over about 0.5 s and going idle eases back out, 
   expect((await samples()).every((a) => a.glow === 0)).toBe(true);
   await toggle();
   await expect(hero(page)).toHaveAttribute("data-live", "true");
-  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 30_000 }).toBe(1);
+  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 180_000 }).toBe(1); // about 83 frames: minutes at the runner's ~4 frames a second
   const up = await frames(true);
   expect(up).toBeGreaterThanOrEqual(24);
   expect(up).toBeLessThanOrEqual(42);
   await toggle();
   await expect(hero(page)).toHaveAttribute("data-live", "false");
-  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 30_000 }).toBe(0);
+  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 180_000 }).toBe(0);
   const down = await frames(false);
   expect(down).toBeGreaterThanOrEqual(24);
   expect(down).toBeLessThanOrEqual(42);
