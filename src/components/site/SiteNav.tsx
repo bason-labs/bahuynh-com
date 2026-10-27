@@ -16,9 +16,11 @@ export function SiteNav({ locale, links }: { locale: Locale; links: NavLink[] })
         BS KARA
       </a>
       <ul className={`${styles.links} mono`}>
-        {links.map((link) => (
+        {links.map((link, index) => (
           <li key={link.href}>
-            <a href={link.href}>{link.label}</a>
+            <a href={link.href} data-nav-link={link.href.slice(1)} aria-current={index === 0 ? "true" : undefined}>
+              {link.label}
+            </a>
           </li>
         ))}
       </ul>

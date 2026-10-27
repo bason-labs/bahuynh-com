@@ -1,0 +1,27 @@
+.rail {
+  position: fixed;
+  right: 0;
+  top: 56px;
+  bottom: 0;
+  width: 28px;
+  z-index: 40;
+  border-left: 1px solid var(--line);
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, var(--line-2) 0 1px, transparent 1px 24px) right 0 top 0 / 8px 100% no-repeat;
+}
+
+.rail i {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 2px;
+  background: var(--air);
+  transition: transform 0.1s linear;
+}
+
+@media (max-width: 900px) {
+  .rail {
+    display: none;
+  }
+}

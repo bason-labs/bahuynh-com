@@ -49,6 +49,11 @@
   color: var(--fg);
 }
 
+.links a[aria-current="true"] {
+  color: var(--fg);
+  border-color: var(--line-2);
+}
+
 .gap {
   flex: 1;
 }
