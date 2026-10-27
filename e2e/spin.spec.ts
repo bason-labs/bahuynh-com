@@ -1,0 +1,244 @@
+import type { Locator, Page } from "@playwright/test";
+import { expect, gotoPage, test, VIEWPORTS } from "./support";
+
+const SONGS = ["Cụng Ly Nào", "Mây Lang Thang", "Về Nhà Thôi", "Nắng Qua Hiên", "Đêm Nay Hát", "Mưa Phố Nhỏ", "Hát Tiếp Đi", "Phố Đêm"];
+const FG = "rgb(243, 239, 232)";
+const DIM = "rgb(85, 83, 79)";
+
+const copy = {
+  vi: {
+    kicker: "/ Quay bài",
+    h2: "Chưa biết hát gì? Quay.",
+    accent: "Quay.",
+    lede: "Ai cũng từng đứng trước danh sách mười nghìn bài. Quay một vòng, bài trúng lên thẳng TV, hàng chờ tự cập nhật.",
+    button: "Quay bài",
+    note: "Bài minh hoạ",
+    tv: "Trên TV",
+    room: "Phòng 7108",
+    empty: "Hàng chờ trống",
+    queue: "Hàng chờ",
+  },
+  en: {
+    kicker: "/ Spin",
+    h2: "Nothing to sing? Spin.",
+    accent: "Spin.",
+    lede: "Everyone has stared at a list of ten thousand songs. Spin once, the winner goes straight to the TV and the queue updates itself.",
+    button: "Spin",
+    note: "Sample songs",
+    tv: "On the TV",
+    room: "Room 7108",
+    empty: "Queue is empty",
+    queue: "Queue",
+  },
+} as const;
+
+const section = (page: Page) => page.locator("section#quay");
+const reel = (page: Page) => page.locator("[data-reel]");
+const rows = (page: Page) => reel(page).locator("li");
+const hits = (page: Page) => reel(page).locator("li[data-hit]");
+const button = (page: Page, lang: "vi" | "en") => section(page).getByRole("button", { name: copy[lang].button, exact: true });
+
+/** Fake clock, paused after load, with the canvases hidden so fake time does not draw every frame. */
+async function freezeTime(page: Page) {
+  await page.clock.install();
+}
+async function startTime(page: Page, lang: "vi" | "en") {
+  await gotoPage(page, lang);
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await page.evaluate(() => document.querySelectorAll("canvas").forEach((c) => (c.style.display = "none")));
+  await section(page).scrollIntoViewIfNeeded();
+}
+const colours = (page: Page) =>
+  rows(page).evaluateAll((els) => els.map((el) => getComputedStyle(el).color));
+const shiftY = (list: Locator) =>
+  list.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m42);
+
+for (const lang of ["vi", "en"] as const) {
+  const c = copy[lang];
+
+  test.describe(`spin chapter on ${lang}`, () => {
+    test("heading, kicker and lede", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const s = section(page);
+      await expect(s.locator("b")).toHaveText("02");
+      await expect(s.locator("b + span")).toHaveText(c.kicker);
+      const h2 = s.getByRole("heading", { level: 2 });
+      await expect(h2).toHaveText(c.h2);
+      await expect(h2.locator("em")).toHaveText(c.accent);
+      await expect(s.getByText(c.lede, { exact: true })).toBeVisible();
+    });
+
+    test("reel at 1440: three 110 px rows, fonts, colours, hairlines and fade", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      await expect(rows(page)).toHaveCount(64);
+      const texts = await rows(page).allTextContents();
+      expect(texts.slice(0, 16)).toEqual([...SONGS, ...SONGS]);
+      const box = (await reel(page).boundingBox())!;
+      expect(box.height).toBe(330);
+      const heights = await rows(page).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+      expect(new Set(heights)).toEqual(new Set([110]));
+      const first = rows(page).nth(0);
+      await expect(first).toHaveCSS("font-weight", "900");
+      await expect(first).toHaveCSS("font-family", /archivo/i);
+      await expect(first).toHaveCSS("text-transform", "uppercase");
+      await expect(first).toHaveCSS("font-variation-settings", /"wdth" 108/);
+      await expect(first).toHaveCSS("font-size", "48.96px");
+      await expect(reel(page)).toHaveCSS("overflow", "hidden");
+      expect(await reel(page).evaluate((el) => getComputedStyle(el).maskImage)).toContain("linear-gradient");
+      const hairlines = await reel(page).evaluate((el) => {
+        const s = getComputedStyle(el, "::before");
+        return [s.top, s.height, s.borderTopWidth, s.borderBottomWidth, s.borderTopColor];
+      });
+      expect(hairlines).toEqual(["110px", "110px", "1px", "1px", "rgba(255, 255, 255, 0.16)"]);
+      const middle = (await rows(page).nth(1).boundingBox())!;
+      expect(middle.y - box.y).toBe(110);
+      const colour = await colours(page);
+      expect(colour[1]).toBe(FG);
+      expect(colour.filter((x) => x === FG)).toHaveLength(1);
+      expect(colour[0]).toBe(DIM);
+      expect(colour[2]).toBe(DIM);
+      expect(await shiftY(reel(page).locator("ul"))).toBe(0);
+    });
+
+    test("reel at 375: three 80 px rows in a 240 px window", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.mobile);
+      await gotoPage(page, lang);
+      expect((await reel(page).boundingBox())!.height).toBe(240);
+      const heights = await rows(page).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+      expect(new Set(heights)).toEqual(new Set([80]));
+      const hairline = await reel(page).evaluate((el) => {
+        const s = getComputedStyle(el, "::before");
+        return [s.top, s.height];
+      });
+      expect(hairline).toEqual(["80px", "80px"]);
+    });
+
+    test("footer, TV panel and queue at rest", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const b = button(page, lang);
+      await expect(b).toBeVisible();
+      await expect(b).toHaveClass(/solid/);
+      await expect(b).toHaveCSS("background-color", FG);
+      await expect(section(page).getByText(c.note, { exact: true })).toBeVisible();
+      const tv = page.locator("[data-tv]");
+      await expect(tv.getByText(c.tv, { exact: true })).toBeVisible();
+      await expect(tv.getByText("BS KARA", { exact: true })).toBeVisible();
+      await expect(tv.getByText(c.room, { exact: true })).toBeVisible();
+      await expect(tv.getByText(c.empty, { exact: true })).toBeVisible();
+      await expect(tv.getByText(c.queue, { exact: true })).toBeVisible();
+      const items = tv.getByRole("listitem");
+      await expect(items).toHaveCount(2);
+      await expect(items.nth(0)).toHaveText("Mây Lang ThangLan");
+      await expect(items.nth(1)).toHaveText("Đêm Nay HátMinh");
+      const screen = tv.getByText(c.empty, { exact: true }).locator("..");
+      expect(await screen.evaluate((el) => el.children.length)).toBe(2);
+    });
+
+    test("reel left (1.2 : 1) of the TV above 900 px, above it at 768", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await gotoPage(page, lang);
+      const box = async () => ({
+        reelbox: (await reel(page).locator("..").boundingBox())!,
+        tv: (await page.locator("[data-tv]").boundingBox())!,
+      });
+      let b = await box();
+      expect(b.reelbox.x + b.reelbox.width).toBeLessThanOrEqual(b.tv.x + 1);
+      expect(Math.abs(b.reelbox.width / b.tv.width - 1.2)).toBeLessThan(0.02);
+      await page.setViewportSize(VIEWPORTS.tablet);
+      b = await box();
+      expect(b.reelbox.y + b.reelbox.height).toBeLessThanOrEqual(b.tv.y + 1);
+      expect(Math.abs(b.reelbox.x - b.tv.x)).toBeLessThan(1);
+    });
+
+    test("the title list is hidden from assistive technology and each title is lang=vi", async ({ page }) => {
+      await gotoPage(page, lang);
+      await expect(reel(page).locator("ul")).toHaveAttribute("aria-hidden", "true");
+      const snapshot = await section(page).ariaSnapshot();
+      for (const song of SONGS.filter((s) => s !== "Mây Lang Thang" && s !== "Đêm Nay Hát")) {
+        expect(snapshot).not.toContain(song);
+      }
+      const langs = await rows(page).evaluateAll((els) => els.map((el) => el.getAttribute("lang")));
+      expect(new Set(langs)).toEqual(new Set(["vi"]));
+      const queueLangs = await page.locator("[data-tv] li > span:first-child").evaluateAll((els) => els.map((el) => el.getAttribute("lang")));
+      expect(queueLangs).toEqual(["vi", "vi"]);
+    });
+
+    test("a spin runs 3.2 s with ease-out and lands one song 3.3 s after the press", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await freezeTime(page);
+      await startTime(page, lang);
+      const list = reel(page).locator("ul");
+      const b = button(page, lang);
+      await expect(b).toHaveAttribute("aria-disabled", "false");
+      await expect(list).toHaveCSS("transition-property", "none");
+      await b.click();
+      await expect(b).toHaveAttribute("aria-disabled", "true");
+      await expect(hits(page)).toHaveCount(0);
+      await page.clock.runFor(100);
+      await expect(list).toHaveCSS("transition-duration", "3.2s");
+      await expect(list).toHaveCSS("transition-property", "transform");
+      await expect(list).toHaveCSS("transition-timing-function", "cubic-bezier(0.12, 0.75, 0.12, 1)");
+      // end the running transition now instead of waiting 3.2 s of real time
+      await list.evaluate((el) => el.getAnimations().forEach((a) => a.finish()));
+      expect(await shiftY(list)).toBeLessThan(0);
+      await page.clock.runFor(3100);
+      await expect(hits(page)).toHaveCount(0);
+      await page.clock.runFor(100);
+      await expect(hits(page)).toHaveCount(1);
+      await expect(b).toHaveAttribute("aria-disabled", "false");
+      const colour = await colours(page);
+      expect(colour.filter((x) => x === FG)).toHaveLength(1);
+      expect(colour.filter((x) => x === DIM)).toHaveLength(63);
+      const hit = hits(page);
+      const index = await rows(page).evaluateAll((els) => els.findIndex((el) => el.hasAttribute("data-hit")));
+      expect(index).toBeGreaterThan(8);
+      expect(await shiftY(list)).toBe(-(index - 1) * 110);
+      const top = (await reel(page).boundingBox())!.y;
+      expect((await hit.boundingBox())!.y - top).toBe(110);
+      expect(SONGS).toContain(await hit.textContent());
+    });
+
+    test("pressing again while spinning changes nothing", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await freezeTime(page);
+      await startTime(page, lang);
+      const b = button(page, lang);
+      await b.click();
+      await page.clock.runFor(1000);
+      const before = await shiftY(reel(page).locator("ul"));
+      await expect(b).toHaveAttribute("aria-disabled", "true");
+      // the fake clock is paused, so Playwright's rAF-based stability wait would hang
+      await b.dispatchEvent("click");
+      await b.dispatchEvent("click");
+      await expect(page.locator("[data-tv]").getByRole("listitem")).toHaveCount(2);
+      await page.clock.runFor(2400);
+      await expect(hits(page)).toHaveCount(1);
+      expect(before).toBeLessThan(0);
+      await expect(page.locator("[data-tv]").getByRole("listitem")).toHaveCount(2);
+    });
+
+    test("after a landing it spins and lands again, the same song may win twice", async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await freezeTime(page);
+      await startTime(page, lang);
+      const b = button(page, lang);
+      const winner = async () => {
+        await page.evaluate(() => {
+          Math.random = () => 0.3;
+        });
+        await b.click();
+        await page.clock.runFor(50);
+        await expect(hits(page)).toHaveCount(0);
+        await expect(b).toHaveAttribute("aria-disabled", "true");
+        await page.clock.runFor(3300);
+        await expect(hits(page)).toHaveCount(1);
+        return hits(page).textContent();
+      };
+      expect(await winner()).toBe("Về Nhà Thôi");
+      expect(await winner()).toBe("Về Nhà Thôi");
+    });
+  });
+}
