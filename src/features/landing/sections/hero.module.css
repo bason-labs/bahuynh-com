@@ -282,6 +282,16 @@
   pointer-events: none;
 }
 
+@media (max-width: 900px) {
+  .side {
+    max-width: 280px;
+  }
+
+  .hint {
+    white-space: normal;
+  }
+}
+
 @media (max-width: 560px) {
   .hero {
     min-height: 700px;

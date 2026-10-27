@@ -37,9 +37,8 @@ export async function gotoPage(page: Page, lang: keyof typeof PATHS) {
   return response;
 }
 
-/** Runs axe with the WCAG 2.2 AA tags on the current page and expects 0 violations. */
-export async function checkAxe(page: Page) {
-  // axe reads a hidden or half-faded chapter block as low contrast: show every block fully first
+/** Shows every chapter block fully: a hidden or half-faded block reads as low contrast to axe and as invisible text to a layout scan. */
+export async function showAllReveals(page: Page) {
   await page.evaluate(() => {
     document.querySelectorAll<HTMLElement>('[data-reveal="pending"]').forEach((el) => (el.dataset.reveal = "in"));
     document
@@ -47,6 +46,11 @@ export async function checkAxe(page: Page) {
       .filter((a) => (a.effect as KeyframeEffect).target?.hasAttribute("data-reveal"))
       .forEach((a) => a.finish());
   });
+}
+
+/** Runs axe with the WCAG 2.2 AA tags on the current page and expects 0 violations. */
+export async function checkAxe(page: Page) {
+  await showAllReveals(page);
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
