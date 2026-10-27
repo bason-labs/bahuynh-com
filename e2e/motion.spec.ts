@@ -297,80 +297,6 @@ test("hero crowd stops drawing while off screen or in a hidden tab, and resumes"
   await expectRunning();
 });
 
-const framesStill = async (page: Page) => {
-  await expectGl(page, "3d");
-  const canvas = page.locator("header#top canvas:not([data-heat])");
-  await expect(canvas).toHaveAttribute("data-running", "false");
-  const before = await readPose(page);
-  expect(before.dustCount).toBe(0);
-  await page.waitForTimeout(10_000);
-  expect(await readPose(page)).toEqual(before);
-};
-
-test.describe("3D mic under reduced motion", () => {
-  test.use({ reducedMotion: "reduce" });
-  test("turns, bobs and draws no dust over 10 s", async ({ page }) => {
-    test.setTimeout(30_000);
-    await page.setViewportSize(SMALL_DESKTOP);
-    await gotoPage(page, "vi");
-    await framesStill(page);
-  });
-});
-
-test("3D mic stands still with the pause toggle pressed, and moves again unpressed", async ({ page }) => {
-  await throttleFrames(page);
-  test.setTimeout(30_000);
-  await page.setViewportSize(SMALL_DESKTOP);
-  await gotoPage(page, "en");
-  await expectGl(page, "3d");
-  const toggle = page.getByRole("navigation").getByRole("button", { name: names.en, exact: true });
-  await expect.poll(async () => (await readPose(page)).dustCount).toBe(500);
-  await toggle.click();
-  await framesStill(page);
-  await toggle.click();
-  await expect.poll(async () => (await readPose(page)).dustCount).toBe(500);
-  const turned = (await readPose(page)).idleYaw;
-  await expect.poll(async () => (await readPose(page)).idleYaw).toBeGreaterThan(turned);
-});
-
-test("3D mic ignores the pointer and the scroll with the pause toggle pressed, but a drag still spins it and live still glows", async ({ page }) => {
-  await throttleFrames(page);
-  test.setTimeout(30_000);
-  await page.setViewportSize({ width: 800, height: 700 });
-  await gotoPage(page, "en");
-  await expectGl(page, "3d");
-  await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
-  await expect.poll(async () => (await readPose(page)).dustCount).toBe(0);
-  const start = await readPose(page);
-  const box = (await page.locator("header#top").boundingBox())!;
-  const head = { x: start.rect.x + start.rect.width / 2, y: start.rect.y + start.rect.height / 2 };
-  const settle = () => page.evaluate(() => new Promise((done) => setTimeout(done, 400)));
-  await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2);
-  await page.mouse.move(box.x + 1, box.y + 100);
-  await settle();
-  const pointed = await readPose(page);
-  expect([pointed.followYaw, pointed.followPitch]).toEqual([0, 0]);
-  expect(pointed.yaw).toBe(start.yaw);
-  await page.mouse.move(head.x, head.y);
-  await page.mouse.down();
-  await page.mouse.move(head.x + 100, head.y);
-  await page.mouse.up();
-  await expect.poll(async () => (await readPose(page)).dragYaw).toBeCloseTo(1, 1);
-  await expect.poll(async () => (await readPose(page)).yaw - start.yaw).toBeCloseTo(1, 1);
-  await page.evaluate(() => {
-    document.body.style.minHeight = "4000px";
-    window.scrollTo({ top: 900, behavior: "instant" });
-  });
-  await settle();
-  const scrolled = await readPose(page);
-  expect([scrolled.scrollYaw, scrolled.scrollPitch, scrolled.scrollLift]).toEqual([0, 0, 0]);
-  expect(scrolled.height).toBe(start.height);
-  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
-  await page.mouse.click(head.x, head.y);
-  await expect(page.locator("header#top")).toHaveAttribute("data-live", "true");
-  await expect.poll(async () => (await readPose(page)).glow).toBe(1);
-});
-
 async function expectReelLandsAtOnce(page: Page, lang: "vi" | "en") {
   await page.setViewportSize(VIEWPORTS.desktop);
   const section = page.locator("section#quay");
@@ -581,3 +507,205 @@ test("pressing the pause toggle shows every pending block at once", async ({ pag
   await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
   await expectBlocksShown(page);
 });
+
+const framesStill = async (page: Page) => {
+  await expectGl(page, "3d");
+  const canvas = page.locator("header#top canvas:not([data-heat])");
+  await expect(canvas).toHaveAttribute("data-running", "false");
+  const before = await readPose(page);
+  expect(before.dustCount).toBe(0);
+  await page.waitForTimeout(10_000);
+  expect(await readPose(page)).toEqual(before);
+};
+
+test.describe("3D mic under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("turns, bobs and draws no dust over 10 s", async ({ page }) => {
+    test.setTimeout(30_000);
+    await page.setViewportSize(SMALL_DESKTOP);
+    await gotoPage(page, "vi");
+    await framesStill(page);
+  });
+});
+
+test("3D mic stands still with the pause toggle pressed, and moves again unpressed", async ({ page }) => {
+  await throttleFrames(page);
+  test.setTimeout(30_000);
+  await page.setViewportSize(SMALL_DESKTOP);
+  await gotoPage(page, "en");
+  await expectGl(page, "3d");
+  const toggle = page.getByRole("navigation").getByRole("button", { name: names.en, exact: true });
+  await expect.poll(async () => (await readPose(page)).dustCount).toBe(500);
+  await toggle.click();
+  await framesStill(page);
+  await toggle.click();
+  await expect.poll(async () => (await readPose(page)).dustCount).toBe(500);
+  const turned = (await readPose(page)).idleYaw;
+  await expect.poll(async () => (await readPose(page)).idleYaw).toBeGreaterThan(turned);
+});
+
+for (const how of ["system setting", "pause toggle"] as const) {
+  test.describe(`3D mic pointer, scroll and drag under reduced motion (${how})`, () => {
+    test.use({ reducedMotion: how === "system setting" ? "reduce" : "no-preference" });
+    test("ignores the pointer and the scroll, the grain stands still, but a drag still spins it and live still glows", async ({ page }) => {
+      await throttleFrames(page);
+      test.setTimeout(30_000);
+      await page.setViewportSize({ width: 800, height: 700 });
+      await gotoPage(page, "en");
+      await expectGl(page, "3d");
+      if (how === "pause toggle") await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
+      await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
+      expect(await grain(page)).toEqual([]);
+      await expect.poll(async () => (await readPose(page)).dustCount).toBe(0);
+      const start = await readPose(page);
+      const box = (await page.locator("header#top").boundingBox())!;
+      const head = { x: start.rect.x + start.rect.width / 2, y: start.rect.y + start.rect.height / 2 };
+      const settle = () => page.evaluate(() => new Promise((done) => setTimeout(done, 400)));
+      await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2);
+      await page.mouse.move(box.x + 1, box.y + 100);
+      await settle();
+      const pointed = await readPose(page);
+      expect([pointed.followYaw, pointed.followPitch]).toEqual([0, 0]);
+      expect(pointed.yaw).toBe(start.yaw);
+      await page.mouse.move(head.x, head.y);
+      await page.mouse.down();
+      await page.mouse.move(head.x + 100, head.y);
+      await page.mouse.up();
+      await expect.poll(async () => (await readPose(page)).dragYaw).toBeCloseTo(1, 1);
+      await expect.poll(async () => (await readPose(page)).yaw - start.yaw).toBeCloseTo(1, 1);
+      await page.evaluate(() => {
+        document.body.style.minHeight = "4000px";
+        window.scrollTo({ top: 900, behavior: "instant" });
+      });
+      await settle();
+      const scrolled = await readPose(page);
+      expect([scrolled.scrollYaw, scrolled.scrollPitch, scrolled.scrollLift]).toEqual([0, 0, 0]);
+      expect(scrolled.height).toBe(start.height);
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+      await page.mouse.click(head.x, head.y);
+      await expect(page.locator("header#top")).toHaveAttribute("data-live", "true");
+      await expect.poll(async () => (await readPose(page)).glow).toBe(1);
+    });
+  });
+}
+
+/** Walks the page top to bottom in viewport steps, giving the observers a frame at each stop. */
+async function scrollThrough(page: Page, each?: () => Promise<void>) {
+  const { height, view } = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, view: innerHeight }));
+  for (let y = 0; y < height; y += view * 0.8) {
+    await page.evaluate((top) => window.scrollTo({ top, behavior: "instant" }), y);
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(null))));
+    await each?.();
+  }
+}
+
+const noAnimations = (page: Page) => page.evaluate(() => document.getAnimations().map((a) => a.playState));
+
+/** The page-wide rules of REQ-LAND-040 under the system setting and under the pause toggle, on both languages. */
+for (const how of ["system setting", "pause toggle"] as const) {
+  for (const lang of ["vi", "en"] as const) {
+    test.describe(`whole page under reduced motion (${how}) on ${lang}`, () => {
+      test.use({ reducedMotion: how === "system setting" ? "reduce" : "no-preference" });
+
+      const open = async (page: Page) => {
+        await throttleFrames(page);
+        await page.setViewportSize(VIEWPORTS.desktop);
+        await gotoPage(page, lang);
+        if (how === "pause toggle") {
+          await page.getByRole("navigation").getByRole("button", { name: names[lang], exact: true }).click();
+        }
+        await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
+      };
+
+      test("no animation is running after load or anywhere on the way down", async ({ page }) => {
+        await open(page);
+        expect(await noAnimations(page)).toEqual([]);
+        await scrollThrough(page, async () => expect(await noAnimations(page)).toEqual([]));
+      });
+
+      test("scrolling through leaves the marquee, bars and crowds still and every reveal block shown", async ({ page }) => {
+        await countCrowdFrames(page);
+        await open(page);
+        const marquee = await marqueeState(page);
+        expect(marquee.running).toBe(0);
+        const bars = page.locator("section#tinhnang [data-bars] i");
+        const crowd = await crowdImage(page);
+        await page.waitForTimeout(300);
+        const heroFrames = await crowdFrames(page);
+        await scrollThrough(page);
+        await expectBlocksShown(page);
+        expect(await bars.evaluateAll((els) => els.reduce((n, el) => n + el.getAnimations().length, 0))).toBe(0);
+        const together = page.locator("section#cungnhau [data-scene]");
+        await together.scrollIntoViewIfNeeded();
+        await expect(together).toHaveAttribute("data-heat", "0.00");
+        const sceneImage = () => together.locator("canvas").evaluate((c: HTMLCanvasElement) => c.toDataURL());
+        const still = await sceneImage();
+        await page.waitForTimeout(1000);
+        expect(await sceneImage()).toBe(still);
+        await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+        await page.waitForTimeout(300);
+        expect(await crowdImage(page)).toBe(crowd);
+        expect(await crowdFrames(page)).toBeLessThanOrEqual(heroFrames + 2);
+        expect((await marqueeState(page)).x).toBe(marquee.x);
+      });
+
+      test("the nav and the anchor links jump at once", async ({ page }) => {
+        await open(page);
+        await expect(page.locator("html")).toHaveCSS("scroll-behavior", "auto");
+        for (const id of ["quay", "tinhnang", "xem"]) {
+          await page.getByRole("navigation").locator(`a[data-nav-link="${id}"]`).click();
+          // read at once: a smooth scroll would still be near the top
+          const top = await page.evaluate((target) => document.getElementById(target)!.getBoundingClientRect().top, id);
+          expect(Math.abs(top - 64)).toBeLessThanOrEqual(1);
+        }
+        await page.getByRole("navigation").getByRole("link", { name: "BS KARA" }).click();
+        expect(await page.evaluate(() => scrollY)).toBe(0);
+      });
+    });
+  }
+}
+
+/** Reduced motion by the system setting: the film swaps its shot with no cross-fade while time and progress advance. */
+test.describe("film under the system reduced motion setting", () => {
+  test.use({ reducedMotion: "reduce" });
+  for (const lang of ["vi", "en"] as const) {
+    test(`${lang}: the shot swap is instant, the timecode and progress advance`, async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS.desktop);
+      await page.clock.install();
+      await gotoPage(page, lang);
+      await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+      const frame = page.locator("[data-film]");
+      await frame.getByRole("button", { name: lang === "vi" ? "Phát video" : "Play video", exact: true }).click();
+      await page.clock.runFor(6_100);
+      await expect(page.locator("[data-timecode]")).toHaveText("0:00:06");
+      const shown = frame.locator('[data-on="true"]');
+      await expect(shown).toHaveCount(1);
+      await expect(shown).toHaveCSS("transition-duration", "0s");
+      await expect(shown).toHaveCSS("opacity", "1");
+      expect(await page.evaluate(() => document.getAnimations().filter((a) => a instanceof CSSTransition).length)).toBe(0);
+      const track = (await page.locator("[data-progress]").boundingBox())!;
+      const filled = (await page.locator("[data-progress] i").boundingBox())!;
+      expect(filled.width / track.width).toBeGreaterThan(0.15);
+    });
+  }
+});
+
+/** Pressing the toggle again resumes every effect it stopped. */
+for (const lang of ["vi", "en"] as const) {
+  test(`${lang}: unpressing the toggle resumes the marquee, grain and bars`, async ({ page }) => {
+    await withoutWebGl(page); // software WebGL starves the polls under load; the mic is not under test here
+    await page.setViewportSize(VIEWPORTS.desktop);
+    await gotoPage(page, lang);
+    const button = page.getByRole("navigation").getByRole("button", { name: names[lang], exact: true });
+    const bars = page.locator("section#tinhnang [data-bars] i");
+    await expect.poll(() => grain(page)).toEqual(["running"]); // hydrated and running before the first press
+    await button.click();
+    await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
+    expect(await noAnimations(page)).toEqual([]);
+    await button.click();
+    await expect(page.locator("html")).toHaveAttribute("data-motion", "run");
+    await expect.poll(() => grain(page)).toEqual(["running"]);
+    await expect.poll(async () => (await marqueeState(page)).running).toBe(1);
+    await expect.poll(() => bars.first().evaluate((el) => el.getAnimations().length)).toBe(1);
+  });
+}
