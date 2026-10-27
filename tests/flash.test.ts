@@ -58,7 +58,7 @@ export function flashes(files: { path: string; text: string }[]): string[] {
 const files = walk("src", process.cwd(), /\.css$/);
 
 describe("flashing (WCAG 2.3.1)", () => {
-  it("scans the stylesheets and finds the five animations", () => {
+  it("scans the stylesheets and finds the six animations", () => {
     const all = files.flatMap((f) => animations(stripComments(f.text)).map((a) => a.name));
     expect(all.sort()).toEqual(["grain", "marq", "ring", "slide", "up", "wave"]);
   });

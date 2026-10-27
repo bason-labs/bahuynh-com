@@ -11,14 +11,15 @@ type Sample = {
   fg: string;
   fgRaw: [number, number, number, number];
   bg: string;
-  unknown: boolean;
+  sampled?: boolean;
+  worst?: number;
   fixed: boolean;
 };
 
 /**
  * Measures every visible text node: its computed colour (with opacity of itself and its ancestors) over the
  * background composited from the computed background colours of its ancestors. A gradient or image background
- * is not a colour: it is reported as `unknown` so it is never passed silently.
+ * is not a colour: the glows are siblings (cone, crowd canvas, grain), so the pixels of every text are read instead (5th percentile of the pixel ratios).
  */
 async function measure(page: Page): Promise<Sample[]> {
   return page.evaluate(() => {
@@ -63,7 +64,6 @@ async function measure(page: Page): Promise<Sample[]> {
       const row = el.closest("[data-reel] li");
       if (row && !row.hasAttribute("data-hit")) continue;
       let opacity = 1;
-      let unknown = false;
       let fixed = false;
       let hidden = false;
       const layers: RGBA[] = [];
@@ -76,7 +76,6 @@ async function measure(page: Page): Promise<Sample[]> {
         if (s.position === "fixed") fixed = true;
         const bg = parse(s.backgroundColor);
         if (bg[3] > 0) layers.push(bg);
-        if (s.backgroundImage !== "none") unknown = true;
       }
       if (hidden || opacity === 0) continue;
       let bg: RGBA = [0, 0, 0, 1];
@@ -95,7 +94,6 @@ async function measure(page: Page): Promise<Sample[]> {
         need: large ? 3 : 4.5,
         fg: hex(fg),
         bg: hex(bg),
-        unknown,
         fixed,
       });
     }
@@ -112,7 +110,7 @@ const fmt = (s: Sample) => `${s.where} "${s.text}" ${s.fg} on ${s.bg}: ${s.ratio
  * coordinates agree (the fixed nav included).
  */
 async function pixelRatios(page: Page, samples: Sample[]): Promise<void> {
-  const todo = samples.filter((s) => s.unknown).sort((a, b) => a.rect.top - b.rect.top);
+  const todo = samples.slice().sort((a, b) => a.rect.top - b.rect.top);
   const height = page.viewportSize()!.height;
   const NAV = 120; // the fixed nav covers the top of the viewport: keep the text below it
   const fixed = todo.filter((s) => s.fixed);
@@ -123,8 +121,12 @@ async function pixelRatios(page: Page, samples: Sample[]): Promise<void> {
     const start = Math.max(0, rest[0].rect.top - NAV);
     const chunk = rest.filter((s) => s.rect.top >= start + (start ? NAV : 0) && s.rect.bottom <= start + height);
     if (chunk.length === 0) throw new Error(`text taller than the viewport: ${fmt(rest[0])}`);
-    await page.evaluate((y) => scrollTo({ top: y, behavior: "instant" }), start);
-    await readChunk(page, chunk, start);
+    // the last screen cannot scroll as far as asked: use the scroll position the page really reached
+    const at = await page.evaluate((y) => {
+      scrollTo({ top: y, behavior: "instant" });
+      return scrollY;
+    }, start);
+    await readChunk(page, chunk, at);
     for (const s of chunk) rest.splice(rest.indexOf(s), 1);
   }
 }
@@ -133,7 +135,7 @@ async function pixelRatios(page: Page, samples: Sample[]): Promise<void> {
 async function readChunk(page: Page, todo: Sample[], top: number): Promise<void> {
   if (todo.length === 0) return;
   const png = await page.screenshot();
-  const ratios: number[] = await page.evaluate(
+  const ratios: number[][] = await page.evaluate(
     async ({ b64, items }) => {
       const img = new Image();
       img.src = "data:image/png;base64," + b64;
@@ -157,19 +159,24 @@ async function readChunk(page: Page, todo: Sample[], top: number): Promise<void>
         const w = Math.max(1, Math.min(c.width, Math.ceil(rect.right * scale)) - x);
         const h = Math.max(1, Math.min(c.height, Math.ceil(rect.bottom * scale)) - y);
         const data = g.getImageData(x, y, w, h).data;
-        let worst = Infinity;
+        const gaps: number[] = [];
         for (let p = 0; p < data.length; p += 4) {
           const a = fg[3];
           const t = lum(a * fg[0] + (1 - a) * data[p], a * fg[1] + (1 - a) * data[p + 1], a * fg[2] + (1 - a) * data[p + 2]);
           const bgL = lum(data[p], data[p + 1], data[p + 2]);
-          worst = Math.min(worst, (Math.max(t, bgL) + 0.05) / (Math.min(t, bgL) + 0.05));
+          gaps.push((Math.max(t, bgL) + 0.05) / (Math.min(t, bgL) + 0.05));
         }
-        return worst;
+        gaps.sort((a, b) => a - b);
+        // the lowest 5 % of pixels are single star dots and grain specks, not the background a reader sees
+        return [gaps[Math.floor(gaps.length * 0.05)], gaps[0]];
       });
     },
     { b64: png.toString("base64"), items: todo.map((s) => ({ rect: { ...s.rect, top: s.rect.top - top, bottom: s.rect.bottom - top }, fg: s.fgRaw })) },
   );
-  todo.forEach((s, i) => (s.ratio = ratios[i]));
+  todo.forEach((s, i) => {
+    [s.ratio, s.worst] = ratios[i];
+    s.sampled = true;
+  });
 }
 
 async function expectContrast(page: Page, label: string) {
@@ -214,6 +221,17 @@ for (const lang of ["vi", "en"] as const) {
       const onAir = samples.find((s) => s.text.toLowerCase() === "on air");
       expect(onAir, "the ON AIR label is measured").toBeDefined();
       expect(onAir!.ratio).toBeGreaterThanOrEqual(4.5);
+      // the glows sit behind the lyric and the meta row: both are read from pixels
+      const lyric = samples.filter((s) => s.where.startsWith("div.lyric"));
+      const meta = samples.filter((s) => /\.meta/.test(s.where));
+      expect(lyric.length, "lyric words are measured").toBeGreaterThan(3);
+      expect(meta.length, "hero meta text is measured").toBeGreaterThan(0);
+      for (const s of [...lyric, ...meta]) expect(s.sampled, `${s.where} is pixel-sampled`).toBe(true);
+      test.info().annotations.push({
+        type: "worst-pixel ratios (live)",
+        description: [...lyric, ...meta].map((s) => `${s.where} "${s.text}" ${s.ratio.toFixed(2)} (single worst pixel ${s.worst!.toFixed(2)})`).join("\n"),
+      });
+      await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
     });
 
     test(`${lang} at ${key}: every visible text meets its contrast ratio, film playing`, async ({ page }) => {
