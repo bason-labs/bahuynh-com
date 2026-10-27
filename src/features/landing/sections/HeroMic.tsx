@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/messages";
+import { MicCanvas } from "../islands/MicCanvas";
 import styles from "./hero.module.css";
 
 const BS = "BS";
@@ -14,6 +15,7 @@ export function HeroMic({ locale }: { locale: Locale }) {
         <span>{BS}</span> <span className={styles.k}>{KARA}</span>
       </div>
       <div className={styles.fallback} aria-hidden="true" data-mic="css" />
+      <MicCanvas className={styles.mic} />
       <div className={`${styles.onair} mono`} aria-live="polite">
         <span>{t.onAir}</span>
       </div>
