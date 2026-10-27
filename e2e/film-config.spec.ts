@@ -119,6 +119,11 @@ for (const lang of ["vi", "en"] as const) {
       await expect.poll(async () => (await state(page)).time).toBeGreaterThanOrEqual(14);
       await expect(timecode(page)).toHaveText(/^0:00:1[4-5]$/);
       await film(page).focus();
+      // ← goes to the last start more than 1 s back: past 15 s that is 14, so step there first
+      if ((await state(page)).time > 15) {
+        await page.keyboard.press("ArrowLeft");
+        await expect(timecode(page)).toHaveText("0:00:14");
+      }
       await page.keyboard.press("ArrowLeft");
       await expect(timecode(page)).toHaveText("0:00:05");
       expect((await state(page)).time).toBe(5);
