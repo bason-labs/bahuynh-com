@@ -22,3 +22,17 @@ test("the CSS mic and the hero copy are visible without JavaScript", async ({ pa
   await expect(hero.getByRole("link", { name: "Mở phòng hát" })).toBeVisible();
   await expect(hero.getByText("Kéo để xoay · chạm để bật micro")).toBeVisible();
 });
+
+for (const [lang, parts] of [
+  ["vi", ["Một đêm hát, 36 giây.", "Từ lúc bật TV đến lúc cả phòng vỗ tay.", "Đêm nay hát gì?", "Bản dựng nháp", "REC", "← → chương", "0:00Bật TV", "0:30Điểm số"]],
+  ["en", ["One night of singing, 36 seconds.", "From switching on the TV to the whole room clapping.", "What are we singing tonight?", "Rough cut", "REC", "← → chapters", "0:00TV on", "0:30Score"]],
+] as const) {
+  test(`the film chapter is present without JavaScript on ${lang}`, async ({ page }) => {
+    await gotoPage(page, lang);
+    const section = page.locator("section#xem");
+    for (const part of parts) {
+      await expect(section).toContainText(part);
+    }
+    await expect(section.getByRole("button")).toHaveCount(8);
+  });
+}
