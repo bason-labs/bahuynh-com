@@ -201,7 +201,7 @@ const countCrowdFrames = async (page: Page) => {
     w.__crowdFrames = 0;
     const clear = CanvasRenderingContext2D.prototype.clearRect;
     CanvasRenderingContext2D.prototype.clearRect = function (...args: Parameters<typeof clear>) {
-      w.__crowdFrames++;
+      if (this.canvas.closest("header#top")) w.__crowdFrames++; // the hero crowd only; section 03 has its own canvas
       return clear.apply(this, args);
     };
   });
@@ -419,3 +419,56 @@ test("spin reel with the pause toggle pressed shows the winner at once", async (
   await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
   await expectReelLandsAtOnce(page, "en");
 });
+
+const sceneCopy = {
+  vi: { tap: "Chạm để thả cảm xúc", words: ["Vỗ tay!", "Hay quá!", "Encore!", "Cháy!"] },
+  en: { tap: "Tap to send a reaction", words: ["Clap!", "So good!", "Encore!", "Fire!"] },
+} as const;
+
+/** Reduced motion by the system setting, then by the pause toggle. */
+for (const how of ["system setting", "pause toggle"] as const) {
+  for (const lang of ["vi", "en"] as const) {
+    test.describe(`a reaction under reduced motion (${how}) on ${lang}`, () => {
+      test.use({ reducedMotion: how === "system setting" ? "reduce" : "no-preference" });
+
+      test("raises the counter, shows the word still at its point for 2.3 s and draws the burst there", async ({ page }) => {
+        await page.setViewportSize(VIEWPORTS.desktop);
+        await page.clock.install();
+        await gotoPage(page, lang);
+        if (how === "pause toggle") {
+          await page.getByRole("navigation").getByRole("button", { name: names[lang], exact: true }).click();
+        }
+        await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
+        const scene = page.locator("section#cungnhau [data-scene]");
+        await scene.scrollIntoViewIfNeeded();
+        await page.clock.pauseAt(new Date(Date.now() + 60_000));
+        const canvas = scene.locator("canvas");
+        const pixel = () =>
+          canvas.evaluate((c: HTMLCanvasElement) => [...c.getContext("2d")!.getImageData(300, 200, 1, 1).data]);
+        const calm = await pixel();
+        await scene
+          .getByRole("button", { name: sceneCopy[lang].tap, exact: true })
+          .click({ position: { x: 300, y: 200 } });
+        const count = scene.locator("[data-count]");
+        const total = Number(((await count.textContent()) ?? "").replace(/[.,]/g, ""));
+        expect(total).toBeGreaterThan(1248);
+        const word = scene.locator("[data-word]");
+        await expect(word).toHaveCount(1);
+        await expect(word).toHaveCSS("animation-name", "none");
+        await expect(word).toHaveCSS("opacity", "1");
+        expect(await word.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m42)).toBe(0);
+        const at = await word.evaluate((el) => ({ x: parseFloat(el.style.left), y: parseFloat(el.style.top) }));
+        expect(Math.abs(at.x - 300)).toBeLessThan(1);
+        expect(Math.abs(at.y - 200)).toBeLessThan(1);
+        await expect(canvas).toHaveAttribute("data-sparks", "26");
+        expect(await pixel()).not.toEqual(calm);
+        await page.clock.runFor(2299);
+        await expect(word).toHaveCount(1);
+        await page.clock.runFor(2);
+        await expect(word).toHaveCount(0);
+        await expect(canvas).toHaveAttribute("data-sparks", "0");
+        expect(await pixel()).toEqual(calm);
+      });
+    });
+  }
+}

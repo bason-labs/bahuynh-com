@@ -79,6 +79,21 @@ for (const lang of ["vi", "en"] as const) {
       await checkAxe(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });
+
+    test(`axe finds no violation on ${lang} at ${key} with the crowd scene calm and after a reaction`, async ({ page }) => {
+      await page.setViewportSize(VIEWPORTS[key]);
+      await gotoPage(page, lang);
+      const scene = page.locator("section#cungnhau [data-scene]");
+      await scene.scrollIntoViewIfNeeded();
+      await checkAxe(page);
+      await scene.getByRole("button", { name: lang === "vi" ? "Hay quá" : "So good", exact: true }).click();
+      const word = scene.locator("[data-word]");
+      await expect(word).toHaveCount(1);
+      // hold the word at full opacity while axe reads it; its fade is checked in together.spec.ts
+      await page.addStyleTag({ content: "[data-word] { animation: none !important; }" });
+      await checkAxe(page);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    });
   }
 }
 

@@ -118,5 +118,10 @@ export const vi = {
       { title: "Mọi người quét mã", text: "Mã QR trên TV. Không cần cài ứng dụng, không cần tài khoản để hát." },
       { title: "Thêm bài, cầm mic", text: "Ai cũng thêm bài từ điện thoại. MC AI giới thiệu, TV phát, cả phòng hát." },
     ],
+    room: "Phòng 7108 · 8 người",
+    counterLabel: "Lượt thả cảm xúc tối nay",
+    tap: "Chạm để thả cảm xúc",
+    buttons: ["Vỗ tay", "Hay quá", "Encore", "Cháy"],
+    words: ["Vỗ tay!", "Hay quá!", "Encore!", "Cháy!"],
   },
 } as const;

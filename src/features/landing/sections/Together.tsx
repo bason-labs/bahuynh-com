@@ -1,5 +1,7 @@
 import type { Locale } from "@/lib/i18n";
+import { COUNTER_START } from "@/lib/reaction";
 import { getMessages } from "@/messages";
+import { TogetherScene } from "../islands/Together";
 import { ChapterHead } from "./ChapterHead";
 import chapter from "./chapter.module.css";
 import styles from "./together.module.css";
@@ -10,6 +12,13 @@ export function Together({ locale }: { locale: Locale }) {
     <section className={chapter.section} id="cungnhau">
       <div className="wrap">
         <ChapterHead number="03" kicker={t.kicker} titleLead={t.titleLead} titleAccent={t.titleAccent} lede={t.lede} />
+        <TogetherScene
+          locale={locale}
+          initial={COUNTER_START}
+          strings={{ room: t.room, counterLabel: t.counterLabel, tap: t.tap }}
+          buttons={t.buttons}
+          words={t.words}
+        />
         <ol className={styles.steps}>
           {t.steps.map((step, i) => (
             <li key={step.title}>

@@ -120,5 +120,10 @@ export const en: Messages = {
       { title: "Everyone scans the code", text: "A QR code on the TV. No app to install, no account needed to sing." },
       { title: "Add songs, grab the mic", text: "Anyone adds songs from their phone. The AI host introduces, the TV plays, the room sings." },
     ],
+    room: "Room 7108 · 8 people",
+    counterLabel: "Reactions tonight",
+    tap: "Tap to send a reaction",
+    buttons: ["Clap", "So good", "Encore", "Fire"],
+    words: ["Clap!", "So good!", "Encore!", "Fire!"],
   },
 };
