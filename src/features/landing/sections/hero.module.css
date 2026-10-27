@@ -203,6 +203,14 @@
   touch-action: pan-y;
 }
 
+.hero[data-gl="3d"] .micControl {
+  cursor: grab;
+}
+
+.hero[data-gl="3d"] .micControl:active {
+  cursor: grabbing;
+}
+
 .micControl:focus-visible {
   outline-offset: -6px;
 }

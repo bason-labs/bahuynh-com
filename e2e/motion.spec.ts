@@ -328,3 +328,41 @@ test("3D mic stands still with the pause toggle pressed, and moves again unpress
   const turned = (await readPose(page)).idleYaw;
   await expect.poll(async () => (await readPose(page)).idleYaw).toBeGreaterThan(turned);
 });
+
+test("3D mic ignores the pointer and the scroll with the pause toggle pressed, but a drag still spins it and live still glows", async ({ page }) => {
+  await throttleFrames(page);
+  test.setTimeout(30_000);
+  await page.setViewportSize({ width: 800, height: 700 });
+  await gotoPage(page, "en");
+  await expectGl(page, "3d");
+  await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
+  await expect.poll(async () => (await readPose(page)).dustCount).toBe(0);
+  const start = await readPose(page);
+  const box = (await page.locator("header#top").boundingBox())!;
+  const head = { x: start.rect.x + start.rect.width / 2, y: start.rect.y + start.rect.height / 2 };
+  const settle = () => page.evaluate(() => new Promise((done) => setTimeout(done, 400)));
+  await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2);
+  await page.mouse.move(box.x + 1, box.y + 100);
+  await settle();
+  const pointed = await readPose(page);
+  expect([pointed.followYaw, pointed.followPitch]).toEqual([0, 0]);
+  expect(pointed.yaw).toBe(start.yaw);
+  await page.mouse.move(head.x, head.y);
+  await page.mouse.down();
+  await page.mouse.move(head.x + 100, head.y);
+  await page.mouse.up();
+  await expect.poll(async () => (await readPose(page)).dragYaw).toBeCloseTo(1, 1);
+  await expect.poll(async () => (await readPose(page)).yaw - start.yaw).toBeCloseTo(1, 1);
+  await page.evaluate(() => {
+    document.body.style.minHeight = "4000px";
+    window.scrollTo({ top: 900, behavior: "instant" });
+  });
+  await settle();
+  const scrolled = await readPose(page);
+  expect([scrolled.scrollYaw, scrolled.scrollPitch, scrolled.scrollLift]).toEqual([0, 0, 0]);
+  expect(scrolled.height).toBe(start.height);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.mouse.click(head.x, head.y);
+  await expect(page.locator("header#top")).toHaveAttribute("data-live", "true");
+  await expect.poll(async () => (await readPose(page)).glow).toBe(1);
+});

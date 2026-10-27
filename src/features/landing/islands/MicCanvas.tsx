@@ -53,7 +53,7 @@ function canCreateWebGl(): boolean {
  * leaves the server-rendered CSS mic in place (REQ-LAND-015); nothing is rethrown or shown.
  */
 export function MicCanvas({ className }: { className: string }) {
-  const { live, setGl, setGrillePoint } = useHeroStage();
+  const { live, setGl, setGrillePoint, setMic } = useHeroStage();
   const reduced = useReducedMotion();
   const ref = useRef<HTMLCanvasElement>(null);
   const handle = useRef<MicHandle | null>(null);
@@ -87,6 +87,7 @@ export function MicCanvas({ className }: { className: string }) {
         });
         started.setLive(latest.current.live);
         setGrillePoint(started.grillePoint);
+        setMic(started);
         handle.current = started;
       } catch {
         if (!cancelled) setGl("fallback");
@@ -98,8 +99,9 @@ export function MicCanvas({ className }: { className: string }) {
       handle.current?.stop();
       handle.current = null;
       setGrillePoint(null);
+      setMic(null);
     };
-  }, [setGl, setGrillePoint]);
+  }, [setGl, setGrillePoint, setMic]);
 
   return <canvas ref={ref} className={className} aria-hidden="true" />;
 }

@@ -30,7 +30,19 @@ import {
 } from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { DUST_COUNT, seedDust, stepDust } from "@/lib/dust";
-import { IDLE_SPIN_PER_FRAME, idleBob, motionFlags, sceneParams } from "@/lib/micpose";
+import {
+  IDLE_SPIN_PER_FRAME,
+  decayVelocity,
+  dragDelta,
+  easeFollow,
+  easeGlow,
+  followTarget,
+  idleBob,
+  motionFlags,
+  releaseVelocity,
+  sceneParams,
+  scrollOffsets,
+} from "@/lib/micpose";
 
 export type MicOptions = {
   reduced: boolean;
@@ -39,8 +51,14 @@ export type MicOptions = {
 };
 
 export type MicHandle = {
-  /** Stores the flag; the live glow is wired in a later ticket. */
+  /** Eases the live glow in or out. */
   setLive: (live: boolean) => void;
+  /** The pointer over the hero, -1 to 1 from its centre to its edge; `null` (it left) keeps the last target. */
+  setPointer: (nx: number | null, ny?: number) => void;
+  /** Spins the mic by a horizontal drag of `dx` CSS px. */
+  dragBy: (dx: number) => void;
+  /** Ends a drag; the mic keeps turning at `lastDx` px per move, slowing to rest. */
+  release: (lastDx: number) => void;
   setReduced: (reduced: boolean) => void;
   /** The grille's centre in CSS px from the canvas's top left corner. */
   grillePoint: () => { x: number; y: number };
@@ -52,6 +70,8 @@ export type MicPose = {
   /** Animation frames advanced; on-demand draws do not count. */
   readonly frame: number;
   readonly live: boolean;
+  /** The live glow, 0 (idle) to 1 (live). */
+  readonly glow: number;
   readonly tilt: number;
   readonly idleYaw: number;
   readonly followYaw: number;
@@ -81,6 +101,12 @@ declare global {
 
 const TILT = 0.22;
 const HEAD_ABOVE_RIG = 1.15;
+const RING_IDLE = 0.4;
+const SWITCH_GLOW = 3;
+const RING_GLOW = 2;
+const RED_LIGHT = 60;
+const KEY_IDLE = 180;
+const KEY_GLOW = 120;
 
 /** Diamond wire mesh drawn as an alpha map for the grille. */
 function meshTexture(): CanvasTexture {
@@ -109,7 +135,7 @@ function meshTexture(): CanvasTexture {
   return t;
 }
 
-function buildMic(): { mic: Group; grille: Mesh } {
+function buildMic() {
   const mic = new Group();
   const chrome = new MeshPhysicalMaterial({ color: 0xd9d6d0, metalness: 1, roughness: 0.22, clearcoat: 0.4 });
   const grille = new Mesh(
@@ -150,22 +176,18 @@ function buildMic(): { mic: Group; grille: Mesh } {
   const foot = new Mesh(new TorusGeometry(0.47, 0.02, 12, 96), chrome);
   foot.rotation.x = Math.PI / 2;
   foot.position.y = -4.3;
-  const switchKey = new Mesh(
-    new BoxGeometry(0.16, 0.42, 0.08),
-    new MeshStandardMaterial({ color: 0x330a05, emissive: 0xff4a2b, emissiveIntensity: 0, roughness: 0.4 }),
-  );
+  const switchMaterial = new MeshStandardMaterial({ color: 0x330a05, emissive: 0xff4a2b, emissiveIntensity: 0, roughness: 0.4 });
+  const switchKey = new Mesh(new BoxGeometry(0.16, 0.42, 0.08), switchMaterial);
   switchKey.position.set(0, -2.1, 0.66);
   switchKey.rotation.x = -0.1;
-  const redRing = new Mesh(
-    new TorusGeometry(0.6, 0.012, 8, 96),
-    new MeshStandardMaterial({ color: 0xff4a2b, emissive: 0xff4a2b, emissiveIntensity: 0.4 }),
-  );
+  const ringMaterial = new MeshStandardMaterial({ color: 0xff4a2b, emissive: 0xff4a2b, emissiveIntensity: RING_IDLE });
+  const redRing = new Mesh(new TorusGeometry(0.6, 0.012, 8, 96), ringMaterial);
   redRing.rotation.x = Math.PI / 2;
   redRing.position.y = -1.55;
   mic.add(body, foot, switchKey, redRing);
   mic.position.y = HEAD_ABOVE_RIG;
   mic.rotation.z = -TILT;
-  return { mic, grille };
+  return { mic, grille, switchMaterial, ringMaterial };
 }
 
 export function startMic(canvas: HTMLCanvasElement, options: MicOptions): MicHandle {
@@ -190,12 +212,12 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
   environment.dispose();
   const camera = new PerspectiveCamera(30, 1, 0.1, 100);
 
-  const { mic, grille } = buildMic();
+  const { mic, grille, switchMaterial, ringMaterial } = buildMic();
   const rig = new Group();
   rig.add(mic);
   scene.add(rig);
 
-  const key = new SpotLight(0xffe2b8, 180, 40, 0.5, 0.6, 1.6);
+  const key = new SpotLight(0xffe2b8, KEY_IDLE, 40, 0.5, 0.6, 1.6);
   key.position.set(1.5, 9, 6);
   key.target = mic;
   const rim = new DirectionalLight(0x9fd0ff, 2.2);
@@ -218,6 +240,15 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
   let flags = motionFlags(reduced);
   let params = sceneParams(canvas.clientWidth);
   let idleYaw = 0;
+  let glow = 0;
+  let followYaw = 0;
+  let followPitch = 0;
+  let targetYaw = 0;
+  let targetPitch = 0;
+  let dragYaw = 0;
+  let velocity = 0;
+  let dragging = false;
+  let scroll = { yaw: 0, pitch: 0, lift: 0 };
   let frame = 0;
   let bob = 0;
   let firstFrameDrawn = false;
@@ -226,8 +257,13 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
   const t0 = performance.now();
 
   const apply = () => {
-    rig.rotation.set(0, idleYaw, 0);
-    rig.position.y = params.restHeight + bob;
+    rig.rotation.set(followPitch + scroll.pitch, idleYaw + followYaw + dragYaw + scroll.yaw, 0);
+    rig.position.y = params.restHeight + scroll.lift + bob;
+    switchMaterial.emissiveIntensity = glow * SWITCH_GLOW;
+    ringMaterial.emissiveIntensity = RING_IDLE + glow * RING_GLOW;
+    red.intensity = glow * RED_LIGHT;
+    key.intensity = KEY_IDLE + glow * KEY_GLOW;
+    key.color.setRGB(1, 0.886 - 0.15 * glow, 0.722 - 0.25 * glow, SRGBColorSpace);
     camera.position.z = params.cameraDistance;
     dust.visible = flags.dust;
   };
@@ -241,7 +277,16 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
   };
   const tick = () => {
     frame++;
-    if (flags.idleTurn) idleYaw += IDLE_SPIN_PER_FRAME;
+    if (!dragging) {
+      velocity = decayVelocity(velocity);
+      dragYaw += velocity;
+      if (flags.idleTurn) idleYaw += IDLE_SPIN_PER_FRAME;
+    }
+    if (flags.follow) {
+      followYaw = easeFollow(followYaw, targetYaw);
+      followPitch = easeFollow(followPitch, targetPitch);
+    }
+    glow = easeGlow(glow, live ? 1 : 0);
     bob = flags.bob ? idleBob((performance.now() - t0) / 1000) : 0;
     if (flags.dust) {
       stepDust(dustPositions);
@@ -272,6 +317,14 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
     draw();
   };
 
+  const onScroll = () => {
+    if (flags.scroll) scroll = scrollOffsets(window.scrollY, window.innerHeight);
+  };
+  /** Draws once when the loop is not running, so a drag or a switch still shows under reduced motion. */
+  const drawIfStill = () => {
+    if (!raf) draw();
+  };
+
   const project = (point: Vector3) => {
     const p = point.clone().project(camera);
     return { x: (p.x * 0.5 + 0.5) * canvas.clientWidth, y: (-p.y * 0.5 + 0.5) * canvas.clientHeight };
@@ -288,16 +341,31 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
     get live() {
       return live;
     },
+    get glow() {
+      return glow;
+    },
     tilt: TILT,
     get idleYaw() {
       return idleYaw;
     },
-    followYaw: 0,
-    followPitch: 0,
-    dragYaw: 0,
-    scrollYaw: 0,
-    scrollPitch: 0,
-    scrollLift: 0,
+    get followYaw() {
+      return followYaw;
+    },
+    get followPitch() {
+      return followPitch;
+    },
+    get dragYaw() {
+      return dragYaw;
+    },
+    get scrollYaw() {
+      return scroll.yaw;
+    },
+    get scrollPitch() {
+      return scroll.pitch;
+    },
+    get scrollLift() {
+      return scroll.lift;
+    },
     get yaw() {
       return rig.rotation.y;
     },
@@ -338,17 +406,47 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
   });
   visibility.observe(canvas);
   document.addEventListener("visibilitychange", sync);
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
   resize();
   sync();
 
   return {
     setLive: (next) => {
       live = next;
+      if (!raf) {
+        glow = next ? 1 : 0;
+        draw();
+      }
+    },
+    setPointer: (nx, ny = 0) => {
+      if (nx === null || !flags.follow) return;
+      const target = followTarget(nx, ny);
+      targetYaw = target.yaw;
+      targetPitch = target.pitch;
+    },
+    dragBy: (dx) => {
+      if (!flags.drag) return;
+      dragging = true;
+      velocity = 0;
+      dragYaw += dragDelta(dx);
+      drawIfStill();
+    },
+    release: (lastDx) => {
+      dragging = false;
+      velocity = reduced ? 0 : releaseVelocity(lastDx);
     },
     setReduced: (next) => {
       reduced = next;
       flags = motionFlags(next);
       bob = 0;
+      if (next) {
+        followYaw = followPitch = targetYaw = targetPitch = velocity = 0;
+        glow = live ? 1 : 0;
+        scroll = { yaw: 0, pitch: 0, lift: 0 };
+      } else {
+        onScroll();
+      }
       sync();
       draw();
     },
@@ -356,6 +454,7 @@ function run(renderer: WebGLRenderer, canvas: HTMLCanvasElement, options: MicOpt
     stop: () => {
       cancelAnimationFrame(raf);
       observer.disconnect();
+      window.removeEventListener("scroll", onScroll);
       visibility.disconnect();
       document.removeEventListener("visibilitychange", sync);
       delete window.__micPose;
