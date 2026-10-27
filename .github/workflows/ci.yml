@@ -63,7 +63,8 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm exec playwright install chromium
-      - run: pnpm e2e --shard=${{ matrix.shard }}/4
+      # --fully-parallel lets the shards split by test, not by file (mic.spec.ts alone is the slowest file)
+      - run: pnpm e2e --shard=${{ matrix.shard }}/4 --fully-parallel
       - name: Upload Playwright report
         if: failure()
         continue-on-error: true
