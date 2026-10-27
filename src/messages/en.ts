@@ -126,4 +126,47 @@ export const en: Messages = {
     buttons: ["Clap", "So good", "Encore", "Fire"],
     words: ["Clap!", "So good!", "Encore!", "Fire!"],
   },
+  features: {
+    kicker: "/ Features",
+    titleLead: "Everything a",
+    titleAccent: "night out needs.",
+    lede: "No karaoke machine, no lost remote. Just a TV, phones and friends.",
+    host: {
+      label: "AI host",
+      quote: "“Next up is Lan, who has been hiding from the mic all night…”",
+      voice: "Vietnamese voice",
+      title: "A host for every song",
+      text: "An introduction written for the singer and the song, read in a natural Vietnamese voice.",
+    },
+    phone: {
+      label: "Phone",
+      title: "Your phone is the remote",
+      text: "Scan to join. Search, add to the queue, send reactions to the TV.",
+    },
+    score: {
+      label: "Score",
+      value: "98",
+      grade: "Brilliant",
+      title: "A score, for fun",
+      text: "Every song ends with a score and a title. Nobody gets roasted, everyone wants another go.",
+    },
+    next: {
+      label: "Up next",
+      songs: ["Mây Lang Thang", "Về Nhà Thôi", "Cụng Ly Nào"],
+      add: "+",
+      title: "What to sing next",
+      text: "Out of ideas? Songs related to the one playing, one tap to add.",
+    },
+    reactions: {
+      label: "Reactions",
+      title: "The whole room reacts",
+      text: "Clap, cheer, call for an encore. Reactions fly onto the TV while the singer sings.",
+    },
+    screens: {
+      label: "Screens",
+      devices: "TV · PROJECTOR · LAPTOP",
+      title: "Any TV works",
+      text: "Smart TV, Android box, projector. Sharp video, and it copes with slow devices.",
+    },
+  },
 };

@@ -64,3 +64,18 @@ for (const [lang, parts] of [
     await expect(section.getByRole("heading", { level: 3 })).toHaveCount(3);
   });
 }
+
+for (const [lang, parts] of [
+  ["vi", ["04", "/ Tính năng", "Mọi thứ một đêm hát cần.", "Không có máy karaoke", "MC AI", "Gợi ý bài tiếp", "TV nào cũng được", "TV · PROJECTOR · LAPTOP"]],
+  ["en", ["04", "/ Features", "Everything a night out needs.", "No karaoke machine", "AI host", "What to sing next", "Any TV works", "TV · PROJECTOR · LAPTOP"]],
+] as const) {
+  test(`the features chapter is present without JavaScript on ${lang}`, async ({ page }) => {
+    await gotoPage(page, lang);
+    const section = page.locator("section#tinhnang");
+    for (const part of parts) {
+      await expect(section).toContainText(part);
+    }
+    await expect(section.getByRole("heading", { level: 3 })).toHaveCount(6);
+    await expect(section.locator("[data-bars] i")).toHaveCount(28);
+  });
+}

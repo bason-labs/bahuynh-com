@@ -48,6 +48,12 @@
 
 @media (max-width: 900px) {
   .head {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .head h2 {
+    font-size: 32px;
   }
 }
