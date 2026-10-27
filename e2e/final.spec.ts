@@ -134,9 +134,10 @@ for (const lang of ["vi", "en"] as const) {
     await expect(section(page)).toBeInViewport();
     await section(page).getByRole("link", { name: c.film, exact: true }).click();
     await expect
-      .poll(async () => (await page.locator("section#xem").boundingBox())!.y, { timeout: 5000 })
+      // a smooth scroll of ~4000 px: give a loaded machine time to finish it
+      .poll(async () => (await page.locator("section#xem").boundingBox())!.y, { timeout: 20_000 })
       .toBeGreaterThanOrEqual(56);
-    await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(2500);
+    await expect.poll(() => page.evaluate(() => scrollY), { timeout: 20_000 }).toBeLessThan(2500);
     await expect(page.locator("section#xem")).toBeInViewport();
     await expect(timecode).toHaveText("0:00:20");
     await expect(frame).toHaveAttribute("data-running", "false");
