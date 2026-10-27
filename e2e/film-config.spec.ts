@@ -31,6 +31,10 @@ const copy = {
   },
 } as const;
 
+// Real media on a loaded runner is slow: every wait on the <video> gets a generous end-state timeout.
+const LONG = { timeout: 30_000 };
+const clock = (t: number) => `0:00:${String(Math.floor(t)).padStart(2, "0")}`;
+
 const film = (page: Page) => page.locator("[data-film]");
 const timecode = (page: Page) => page.locator("[data-timecode]");
 const chapterButtons = (page: Page) => page.locator("section#xem [data-film] + div button");
@@ -57,7 +61,9 @@ for (const lang of ["vi", "en"] as const) {
       await expect(video(page)).toHaveCount(1);
       await expect(video(page)).toHaveAttribute("preload", "metadata");
       await expect(video(page)).toHaveAttribute("poster", "/film/poster.jpg");
-      await expect.poll(() => video(page).evaluate((v: HTMLVideoElement) => v.readyState)).toBeGreaterThanOrEqual(1);
+      await expect
+        .poll(() => video(page).evaluate((v: HTMLVideoElement) => v.readyState), LONG)
+        .toBeGreaterThanOrEqual(1);
       const section = page.locator("section#xem");
       await expect(section.getByRole("heading", { level: 2 })).toHaveText(c.h2);
       await expect(section.getByText(c.lede, { exact: true })).toBeVisible();
@@ -80,29 +86,37 @@ for (const lang of ["vi", "en"] as const) {
     test("plays with sound from 0:00; timecode and progress follow the film; the poster returns at its end", async ({ page }) => {
       await gotoPage(page, lang);
       await film(page).getByRole("button", { name: c.playVideo, exact: true }).click();
-      await expect(film(page)).toHaveAttribute("data-running", "true");
-      await expect.poll(async () => (await state(page)).time).toBeGreaterThan(0);
+      await expect(film(page)).toHaveAttribute("data-running", "true", LONG);
+      await expect.poll(async () => (await state(page)).time, LONG).toBeGreaterThan(0);
       const playing = await state(page);
       expect(playing.paused).toBe(false);
       expect(playing.muted).toBe(false);
       expect(playing.volume).toBeGreaterThan(0);
       expect(playing.duration).toBeGreaterThan(15);
       await film(page).getByRole("button", { name: c.pause, exact: true }).click();
-      await expect(film(page)).toHaveAttribute("data-running", "false");
+      await expect(film(page)).toHaveAttribute("data-running", "false", LONG);
+      // paused now: the video no longer moves, so the UI must settle on exactly what it shows
       const held = await state(page);
-      await expect(timecode(page)).toHaveText(`0:00:0${Math.floor(held.time)}`);
-      const track = (await page.locator("[data-progress]").boundingBox())!;
-      const filled = (await page.locator("[data-progress] i").boundingBox())!;
-      expect(filled.width / track.width).toBeCloseTo(held.time / held.duration, 1);
+      expect(held.paused).toBe(true);
+      await expect(timecode(page)).toHaveText(clock(held.time), LONG);
+      await expect
+        .poll(async () => {
+          const track = (await page.locator("[data-progress]").boundingBox())!;
+          const filled = (await page.locator("[data-progress] i").boundingBox())!;
+          return Math.abs(filled.width / track.width - held.time / held.duration);
+        }, LONG)
+        .toBeLessThan(0.05);
       await film(page).getByRole("button", { name: c.play, exact: true }).click();
-      await expect(film(page)).toHaveAttribute("data-running", "true");
+      await expect(film(page)).toHaveAttribute("data-running", "true", LONG);
       await video(page).evaluate((v: HTMLVideoElement) => {
         v.currentTime = v.duration - 0.6;
       });
-      await expect(film(page)).toHaveAttribute("data-running", "false");
-      await expect(timecode(page)).toHaveText("0:00:00");
-      await expect.poll(async () => (await page.locator("[data-progress] i").boundingBox())?.width ?? 0).toBe(0);
-      await expect(film(page).getByText(c.poster, { exact: true })).toBeVisible();
+      await expect(film(page)).toHaveAttribute("data-running", "false", LONG);
+      await expect(timecode(page)).toHaveText("0:00:00", LONG);
+      await expect
+        .poll(async () => (await page.locator("[data-progress] i").boundingBox())?.width ?? 0, LONG)
+        .toBe(0);
+      await expect(film(page).getByText(c.poster, { exact: true })).toBeVisible(LONG);
       expect((await state(page)).time).toBe(0);
     });
 
@@ -110,14 +124,26 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       await expect(chapterButtons(page)).toHaveCount(3);
       for (let i = 0; i < 3; i++) await expect(chapterButtons(page).nth(i)).toHaveText(c.chapters[i]);
+      // The jump starts playback; the clip is 16 s, so pause on the very first 'playing' event rather than
+      // racing a click against real time (a slow runner would run past 0:00:15, or end, before it).
+      await video(page).evaluate((v: HTMLVideoElement) => {
+        (window as unknown as { played: Promise<void> }).played = new Promise((resolve) =>
+          v.addEventListener(
+            "playing",
+            () => {
+              v.pause();
+              resolve();
+            },
+            { once: true },
+          ),
+        );
+      });
       await chapterButtons(page).nth(2).click();
-      await expect(film(page)).toHaveAttribute("data-running", "true");
-      await expect(chapterButtons(page).nth(2)).toHaveAttribute("aria-current", "true");
-      // pause at once: the clip is 16 s and plays in real time, so a slow runner must not run it past 0:00:15
-      await film(page).getByRole("button", { name: c.pause, exact: true }).click();
-      await expect(film(page)).toHaveAttribute("data-running", "false");
-      await expect.poll(async () => (await state(page)).time).toBeGreaterThanOrEqual(14);
-      await expect(timecode(page)).toHaveText(/^0:00:1[4-5]$/);
+      await page.evaluate(() => (window as unknown as { played: Promise<void> }).played);
+      await expect(chapterButtons(page).nth(2)).toHaveAttribute("aria-current", "true", LONG);
+      await expect(film(page)).toHaveAttribute("data-running", "false", LONG);
+      await expect.poll(async () => (await state(page)).time, LONG).toBeGreaterThanOrEqual(14);
+      await expect(timecode(page)).toHaveText(/^0:00:1[4-5]$/, LONG);
       await film(page).focus();
       // ← goes to the last start more than 1 s back: past 15 s that is 14, so step there first
       if ((await state(page)).time > 15) {
@@ -140,12 +166,12 @@ for (const lang of ["vi", "en"] as const) {
     test("the captions of the page language are the showing track", async ({ page }) => {
       await gotoPage(page, lang);
       await film(page).getByRole("button", { name: c.playVideo, exact: true }).click();
-      await expect(film(page)).toHaveAttribute("data-running", "true");
+      await expect(film(page)).toHaveAttribute("data-running", "true", LONG);
       const tracks = () =>
         video(page).evaluate((v: HTMLVideoElement) =>
           [...v.textTracks].map((t) => ({ kind: t.kind, language: t.language, mode: t.mode })),
         );
-      await expect.poll(tracks).toEqual([{ kind: "captions", language: lang, mode: "showing" }]);
+      await expect.poll(tracks, LONG).toEqual([{ kind: "captions", language: lang, mode: "showing" }]);
       await expect(video(page).locator("track")).toHaveAttribute("src", `/film/${lang}.vtt`);
     });
   });
