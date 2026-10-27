@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { filmConfig } from "../features/landing/film.config";
 import { type FilmConfig, resolveFilm } from "./film";
@@ -31,9 +33,19 @@ const fixture: FilmConfig = {
 };
 
 describe("resolveFilm", () => {
-  it("ships no film in this build", () => {
-    expect(filmConfig).toBeNull();
-    expect(resolveFilm(filmConfig, "vi")).toBeNull();
+  it("returns null with no film configured", () => {
+    expect(resolveFilm(null, "vi")).toBeNull();
+  });
+
+  it("ships the walkthrough film, its poster and captions from public/", () => {
+    expect(filmConfig).not.toBeNull();
+    const urls = [filmConfig!.src, filmConfig!.poster, filmConfig!.captions.vi, filmConfig!.captions.en];
+    for (const url of urls) {
+      expect(url.startsWith("/film/")).toBe(true);
+      expect(existsSync(join("public", url))).toBe(true);
+    }
+    expect(filmConfig!.chapters.map((c) => c.start)).toEqual([0, 5, 10, 22, 31, 39]);
+    expect(resolveFilm(filmConfig, "en")!.copy.titleAccent).toBe("46 seconds.");
   });
 
   it.each([
