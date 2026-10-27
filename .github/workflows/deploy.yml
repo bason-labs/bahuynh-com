@@ -1,0 +1,95 @@
+name: deploy
+
+# Builds the site image on every push to main and pushes it to GHCR; when the owner has set the
+# deploy key, rolls it out to the bs-kara server and waits for bahuynh.com to serve it.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/bason-labs/bahuynh-com
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      deploy: ${{ steps.key.outputs.set }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: tag
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      # A job-level `if:` cannot read secrets, so the deploy job gates on this output instead.
+      - id: key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: echo "set=$([ -n "$DEPLOY_SSH_KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+          labels: org.opencontainers.image.source=https://github.com/bason-labs/bahuynh-com
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: image
+    if: needs.image.outputs.deploy == 'true'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    env:
+      TAG: ${{ needs.image.outputs.tag }}
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+    steps:
+      - name: Write the SSH key and known hosts
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::error::set the DEPLOY_HOST and DEPLOY_KNOWN_HOSTS repository variables"
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Pull the image and restart the site service
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes "ubuntu@$DEPLOY_HOST" \
+            "cd /opt/bs-kara && docker pull -q $IMAGE:$TAG && (grep -q '^SITE_IMAGE_TAG=' .env && sed -i 's/^SITE_IMAGE_TAG=.*/SITE_IMAGE_TAG=$TAG/' .env || echo SITE_IMAGE_TAG=$TAG >> .env) && docker compose up -d site"
+      - name: Wait for bahuynh.com to serve the site
+        run: |
+          deadline=$((SECONDS + 90))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            if curl -fsS --max-time 10 https://bahuynh.com/ | grep -q '<html lang="vi"' &&
+              [ "$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' https://bahuynh.com/slide/)" = 200 ]; then
+              echo "bahuynh.com serves $TAG"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::bahuynh.com did not serve <html lang=\"vi\"> and /slide/ 200 within 90 s"
+          exit 1

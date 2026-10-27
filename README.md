@@ -21,6 +21,27 @@ scripts/build-image.sh
 It pushes `ghcr.io/bason-labs/bahuynh-com:<short sha>` and `:latest` for linux/arm64. The server
 pulls the image and puts it behind its own reverse proxy; that setup lives with the server, not here.
 
+### Automatic build and rollout
+
+`.github/workflows/deploy.yml` runs on every push to `main`, and can be started by hand from the
+Actions tab. Job `image` builds the image on a native arm64 runner and pushes
+`ghcr.io/bason-labs/bahuynh-com:<short sha>` and `:latest`, using `GITHUB_TOKEN`.
+
+Job `deploy` runs only when the `DEPLOY_SSH_KEY` secret is set. It logs in to the server over
+SSH. In `/opt/bs-kara` it pulls the new image, sets `SITE_IMAGE_TAG` in `.env` and runs
+`docker compose up -d site`. It then waits up to 90 s for `https://bahuynh.com/` to serve the
+site and for `/slide/` to return 200.
+
+Set these in the repository settings (Secrets and variables, then Actions):
+
+| Name | Kind | Value |
+|---|---|---|
+| `DEPLOY_SSH_KEY` | secret | private key of a deploy key for `ubuntu` on the server |
+| `DEPLOY_HOST` | variable | the server's host name or IP |
+| `DEPLOY_KNOWN_HOSTS` | variable | the server's `known_hosts` line(s), for example from `ssh-keyscan <host>` checked against the server |
+
+Without the secret, the workflow still pushes the image, and the deploy job is skipped.
+
 Try the image locally:
 
 ```bash
