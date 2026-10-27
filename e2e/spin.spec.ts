@@ -47,6 +47,10 @@ async function startTime(page: Page, lang: "vi" | "en") {
   await page.clock.pauseAt(new Date(Date.now() + 60_000));
   await page.evaluate(() => document.querySelectorAll("canvas").forEach((c) => (c.style.display = "none")));
   await section(page).scrollIntoViewIfNeeded();
+  // the chapter block fades in 24 px up as it appears; let it land before positions are measured
+  const block = section(page).locator(".wrap > *").last();
+  await expect(block).not.toHaveAttribute("data-reveal", "pending");
+  await block.evaluate((el) => el.getAnimations().forEach((a) => a.finish()));
 }
 const tv = (page: Page) => page.locator("[data-tv]");
 const queueRows = (page: Page) => tv(page).getByRole("listitem");

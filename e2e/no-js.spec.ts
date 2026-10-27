@@ -92,3 +92,15 @@ for (const [lang, headings, cta] of [
     await expect(final.getByRole("heading", { level: 2 })).toBeVisible();
   });
 }
+
+for (const lang of ["vi", "en"] as const) {
+  test(`every chapter head and content block is fully visible without JavaScript on ${lang}`, async ({ page }) => {
+    await gotoPage(page, lang);
+    const blocks = page.locator(":is(#xem, #quay, #cungnhau, #tinhnang, #batdau) > .wrap > *");
+    await expect(blocks).toHaveCount(10);
+    for (const block of await blocks.all()) {
+      await expect(block).toHaveCSS("opacity", "1");
+      await expect(block).toHaveCSS("transform", "none");
+    }
+  });
+}
