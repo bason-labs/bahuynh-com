@@ -4,6 +4,7 @@ import {
   decayVelocity,
   dragDelta,
   easeFollow,
+  easeGlow,
   followTarget,
   idleBob,
   isTap,
@@ -130,5 +131,25 @@ describe("motionFlags", () => {
   });
   it("normal motion leaves all on", () => {
     expect(Object.values(motionFlags(false)).every(Boolean)).toBe(true);
+  });
+});
+
+describe("live glow", () => {
+  it("rises monotonically, passes 0.9 between 0.4 s and 0.7 s and falls back the same way", () => {
+    let k = 0;
+    const rise: number[] = [];
+    for (let i = 0; i < 60; i++) rise.push((k = easeGlow(k, 1)));
+    expect(rise.every((v, i) => i === 0 || v > rise[i - 1])).toBe(true);
+    const at90 = rise.findIndex((v) => v >= 0.9) + 1;
+    expect(at90).toBeGreaterThanOrEqual(24);
+    expect(at90).toBeLessThanOrEqual(42);
+    let fall = rise[at90 - 1];
+    let frames = 0;
+    while (fall > 0.1) {
+      fall = easeGlow(fall, 0);
+      frames++;
+    }
+    expect(frames).toBeGreaterThanOrEqual(24);
+    expect(frames).toBeLessThanOrEqual(42);
   });
 });
