@@ -102,14 +102,6 @@ if (existsSync(chunks)) {
   }
 }
 
-// The film fixture (e2e/fixtures, pnpm build:film-fixture) never ships in out/.
-if (existsSync("out/film")) errors.push("out/film exists: the film fixture files are in the default build");
-if (existsSync(chunks)) {
-  for (const name of readdirSync(chunks).filter((n) => n.endsWith(".js"))) {
-    if (readFileSync(join(chunks, name), "utf8").includes("/film/film.webm")) errors.push(`${name} contains the film fixture config`);
-  }
-}
-
 function htmlFiles(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
     e.isDirectory() ? htmlFiles(join(dir, e.name)) : e.name.endsWith(".html") ? [join(dir, e.name)] : [],

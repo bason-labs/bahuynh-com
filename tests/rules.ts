@@ -72,8 +72,7 @@ export function walk(dir: string, root: string, match: RegExp): Source[] {
   return files;
 }
 
-const DEV_ALLOWED = [/^typescript$/, /^@types\//, /^eslint$/, /^eslint-config-next$/, /^vitest$/,
-  /^@playwright\/test$/, /^@axe-core\/playwright$/];
+const DEV_ALLOWED = [/^typescript$/, /^@types\//, /^eslint$/, /^eslint-config-next$/, /^vitest$/];
 const DEPS_ALLOWED = new Set(["next", "react", "react-dom", "three"]);
 
 /** Dependency allowlist (AD-12). Returns the package names that are not allowed. */

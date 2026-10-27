@@ -9,14 +9,7 @@
     "build": "next build && node scripts/check-build.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run",
-    "preview": "node scripts/serve-out.mjs --port 4173",
-    "e2e": "playwright test --project=chromium",
-    "e2e:perf": "playwright test --project=perf",
-    "build:film-fixture": "node scripts/build-film-fixture.mjs",
-    "preview:film": "node scripts/serve-out.mjs --port 4174 --dir out-film",
-    "e2e:film": "playwright test --config playwright.film.config.ts",
-    "perf:once": "node scripts/measure-lcp.mjs"
+    "test": "vitest run"
   },
   "dependencies": {
     "next": "16.4.3",
@@ -25,8 +18,6 @@
     "three": "0.186.1"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.14.0",
-    "@playwright/test": "1.64.1",
     "@types/node": "^22.20.5",
     "@types/react": "~19.0.14",
     "@types/react-dom": "~19.0.6",
