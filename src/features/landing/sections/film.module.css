@@ -163,6 +163,11 @@
   color: var(--muted);
 }
 
+.chapters button[aria-current="true"] {
+  color: var(--fg);
+  background: var(--bg-2);
+}
+
 .chapters button:last-child {
   border-right: 0;
 }

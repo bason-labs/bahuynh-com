@@ -26,6 +26,7 @@ export function Film({ locale }: { locale: Locale }) {
             playVideo: t.playVideo,
             play: t.play,
             pause: t.pause,
+            frameLabel: t.frameLabel,
             keys: t.keys,
           }}
           chapters={t.chapters.map((c, i) => ({ ...c, time: formatChapterTime(CHAPTER_STARTS[i]) }))}
