@@ -500,9 +500,10 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       await page.locator("header#top").getByRole("link", { name: c.watch, exact: true }).click();
       await expect
-        .poll(async () => (await page.locator("section#xem").boundingBox())!.y, { timeout: 5000 })
+        .poll(async () => (await page.locator("section#xem").boundingBox())!.y, { timeout: 20_000 })
         .toBeGreaterThanOrEqual(56);
-      await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
+      // smooth scrolling runs on animation frames, which a loaded machine slows down
+      await expect.poll(() => page.evaluate(() => scrollY), { timeout: 20_000 }).toBeGreaterThan(300);
       await page.waitForTimeout(800);
       expect((await page.locator("section#xem").boundingBox())!.y).toBeGreaterThanOrEqual(56);
       await expect(film(page)).toHaveAttribute("data-running", "false");

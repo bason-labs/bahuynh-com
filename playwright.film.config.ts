@@ -8,7 +8,17 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: { baseURL: "http://localhost:4174" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // A CI runner has no audio device; muting the browser's output (not the page's <video>) lets a
+        // film with sound play there. The specs still assert the element is unmuted.
+        launchOptions: { args: ["--mute-audio"] },
+      },
+    },
+  ],
   webServer: {
     command: "pnpm preview:film",
     url: "http://localhost:4174",

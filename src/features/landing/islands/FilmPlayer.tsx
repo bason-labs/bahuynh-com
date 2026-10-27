@@ -123,7 +123,11 @@ export function FilmPlayer({ strings, chapters, film }: FilmPlayerProps) {
               setTime(0);
               setPlaying(false);
             }}
-            onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+            onTimeUpdate={(e) => {
+              setTime(e.currentTarget.currentTime);
+              // loadedmetadata can fire before hydration attaches the handler below; the duration must not stay 0
+              setDuration(e.currentTarget.duration);
+            }}
             onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
             onError={() => {
               if (pressed.current) fallBack();
