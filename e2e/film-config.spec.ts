@@ -113,9 +113,10 @@ for (const lang of ["vi", "en"] as const) {
       await chapterButtons(page).nth(2).click();
       await expect(film(page)).toHaveAttribute("data-running", "true");
       await expect(chapterButtons(page).nth(2)).toHaveAttribute("aria-current", "true");
-      await expect.poll(async () => (await state(page)).time).toBeGreaterThanOrEqual(14);
+      // pause at once: the clip is 16 s and plays in real time, so a slow runner must not run it past 0:00:15
       await film(page).getByRole("button", { name: c.pause, exact: true }).click();
       await expect(film(page)).toHaveAttribute("data-running", "false");
+      await expect.poll(async () => (await state(page)).time).toBeGreaterThanOrEqual(14);
       await expect(timecode(page)).toHaveText(/^0:00:1[4-5]$/);
       await film(page).focus();
       await page.keyboard.press("ArrowLeft");
