@@ -74,6 +74,8 @@ export function MicCanvas({ className }: { className: string }) {
     let cancelled = false;
     const start = async () => {
       await afterFirstContentfulPaint();
+      // The hero's text is the largest paint: let its fonts land before the 3D code competes for the network (REQ-LAND-045.AC-3).
+      await document.fonts.ready;
       await whenIdle();
       await whenIntersecting(canvas);
       if (cancelled) return;

@@ -36,6 +36,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+      - name: Throttled LCP and CLS specs (warn)
+        run: pnpm e2e:perf
+        continue-on-error: true
       - name: Measure LCP (warn)
         run: pnpm perf:once
         continue-on-error: true
