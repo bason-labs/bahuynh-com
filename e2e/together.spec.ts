@@ -283,6 +283,8 @@ for (const lang of ["vi", "en"] as const) {
       await page.setViewportSize(VIEWPORTS.desktop);
       await seedRandom(page);
       await gotoPage(page, lang);
+      // the 3D mic's chunk is requested once the hero's fonts have landed and the page is idle; wait for it
+      await expect(page.locator("header#top")).not.toHaveAttribute("data-gl", "loading", { timeout: 20_000 });
       await page.waitForLoadState("networkidle");
       const requests: string[] = [];
       // a request that sends something; the site's own static chunks (the lazy 3D mic) only fetch code

@@ -74,6 +74,9 @@ export function MicCanvas({ className }: { className: string }) {
     let cancelled = false;
     const start = async () => {
       await afterFirstContentfulPaint();
+      // The hero's text is the largest paint: let its fonts land before the 3D code competes for the network (REQ-LAND-045.AC-3).
+      // Capped at 3 s so a hung font request cannot hold the mic back.
+      await Promise.race([document.fonts.ready, new Promise((done) => setTimeout(done, 3000))]);
       await whenIdle();
       await whenIntersecting(canvas);
       if (cancelled) return;
