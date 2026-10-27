@@ -5,16 +5,16 @@
   "preloadFontKb": 200,
   "threeMarker": "__THREE__",
   "baseline": {
-    "note": "measured by scripts/check-build.mjs on the current build; threeMarker is provisional until three arrives in ticket 22",
+    "note": "measured by scripts/check-build.mjs on the current build; threeMarker __THREE__ is confirmed in the three chunk and in no initial script (ticket 22)",
     "initialJsGzKb": {
-      "/": 132.5,
-      "/en/": 132.5
+      "/": 136.3,
+      "/en/": 136.3
     },
     "htmlGzKb": {
-      "/": 2.2,
-      "/en/": 2.2
+      "/": 4.4,
+      "/en/": 4.3
     },
-    "micChunkGzKb": null,
+    "micChunkGzKb": 135.2,
     "preloadFontKb": {
       "/": 174.9,
       "/en/": 174.9
