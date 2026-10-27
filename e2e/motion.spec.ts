@@ -472,3 +472,61 @@ for (const how of ["system setting", "pause toggle"] as const) {
     });
   }
 }
+
+const countSceneFrames = (page: Page) =>
+  page.addInitScript(() => {
+    const w = window as unknown as { __sceneFrames: number };
+    w.__sceneFrames = 0;
+    const clear = CanvasRenderingContext2D.prototype.clearRect;
+    CanvasRenderingContext2D.prototype.clearRect = function (...args: Parameters<typeof clear>) {
+      if (this.canvas.closest("section#cungnhau")) w.__sceneFrames++;
+      return clear.apply(this, args);
+    };
+  });
+const sceneFrames = (page: Page) => page.evaluate(() => (window as unknown as { __sceneFrames: number }).__sceneFrames);
+
+/** Heat rises and falls with no continuous frames at a constant heat; fake time keeps it independent of the machine. */
+async function expectStillHeat(page: Page, pause: boolean) {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await page.clock.install();
+  await gotoPage(page, "vi");
+  if (pause) await page.getByRole("navigation").getByRole("button", { name: names.vi, exact: true }).click();
+  const scene = page.locator("section#cungnhau [data-scene]");
+  await scene.scrollIntoViewIfNeeded();
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  await page.evaluate(() => document.querySelectorAll("header canvas").forEach((c) => ((c as HTMLElement).style.display = "none")));
+  const image = () => scene.locator("canvas").evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page.clock.runFor(100);
+  await expect(scene).toHaveAttribute("data-heat", "0.00");
+  const calm = await image();
+  const calmFrames = await sceneFrames(page);
+  await page.clock.runFor(300);
+  expect(await sceneFrames(page)).toBe(calmFrames);
+  for (let i = 0; i < 4; i++) await scene.getByRole("button", { name: "Vỗ tay", exact: true }).click();
+  await expect(scene).toHaveAttribute("data-heat", "1.00");
+  expect(await sceneFrames(page)).toBeGreaterThan(calmFrames);
+  expect(await image()).not.toBe(calm);
+  // The heat falls by elapsed time, so a jump is enough; the frame count is checked over short runs.
+  await page.clock.fastForward(2100);
+  expect(Math.abs(Number(await scene.getAttribute("data-heat")) - 0.5)).toBeLessThanOrEqual(0.05);
+  await page.clock.fastForward(2300);
+  await page.clock.runFor(100);
+  await expect(scene).toHaveAttribute("data-heat", "0.00");
+  expect(await image()).toBe(calm);
+  const cooled = await sceneFrames(page);
+  await page.clock.runFor(300);
+  expect(await sceneFrames(page)).toBe(cooled);
+}
+
+test.describe("together crowd heat under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("heat rises and falls, and no frames are drawn at a constant heat", async ({ page }) => {
+    await countSceneFrames(page);
+    await expectStillHeat(page, false);
+  });
+});
+
+test("together crowd heat with the pause toggle pressed rises and falls without continuous frames", async ({ page }) => {
+  await countSceneFrames(page);
+  await expectStillHeat(page, true);
+});

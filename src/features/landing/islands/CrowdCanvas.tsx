@@ -28,6 +28,8 @@ export type CrowdCanvasProps = {
 export type CrowdHandle = {
   /** Light sparks from (x, y) in canvas pixels. */
   burst: (x: number, y: number, n?: number) => void;
+  /** Draws one frame now, for callers that change the heat while no loop runs. */
+  redraw: () => void;
 };
 
 /** How long a still burst stays on screen when motion is reduced. */
@@ -190,6 +192,7 @@ export function CrowdCanvas({ rows, gap, scale, rowLift, colors, heat, glow, cla
   useImperativeHandle(
     ref,
     () => ({
+      redraw: () => redraw.current(),
       burst(x, y, n = 26) {
         const batch = makeSparks(x, y, n, Math.random);
         sparks.current.push(...batch);
