@@ -30,7 +30,7 @@ Actions tab. Job `image` builds the image on a native arm64 runner and pushes
 Job `deploy` runs only when the `DEPLOY_SSH_KEY` secret is set. It logs in to the server over
 SSH. In `/opt/bs-kara` it pulls the new image, sets `SITE_IMAGE_TAG` in `.env` and runs
 `docker compose up -d site`. It then waits up to 90 s for `https://bahuynh.com/` to serve the
-site and for `/slide/` to return 200.
+site (`<html lang="vi"`).
 
 Set these in the repository settings (Secrets and variables, then Actions):
 

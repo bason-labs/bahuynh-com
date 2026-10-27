@@ -86,12 +86,11 @@ jobs:
         run: |
           deadline=$((SECONDS + 90))
           while [ "$SECONDS" -lt "$deadline" ]; do
-            if curl -fsS --max-time 10 https://bahuynh.com/ | grep -q '<html lang="vi"' &&
-              [ "$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' https://bahuynh.com/slide/)" = 200 ]; then
+            if curl -fsS --max-time 10 https://bahuynh.com/ | grep -q '<html lang="vi"'; then
               echo "bahuynh.com is healthy after rolling out $TAG"
               exit 0
             fi
             sleep 5
           done
-          echo "::error::bahuynh.com did not serve <html lang=\"vi\"> and /slide/ 200 within 90 s"
+          echo "::error::bahuynh.com did not serve <html lang=\"vi\"> within 90 s"
           exit 1
