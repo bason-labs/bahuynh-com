@@ -20,3 +20,19 @@ describe.each([["vi", vi], ["en", en]])("%s dictionary", (_name, dict) => {
     }
   });
 });
+
+describe("meta section", () => {
+  const diacritic = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+  const stopWords = /(?<!\p{L})(the|and|of|a|to)(?!\p{L})/iu;
+  const values = (m: Record<string, string>) => Object.entries(m);
+
+  it("has the same keys in both dictionaries", () => {
+    expect(Object.keys(en.meta)).toEqual(Object.keys(vi.meta));
+  });
+  it("en has no Vietnamese diacritic", () => {
+    for (const [k, v] of values(en.meta)) expect(v, k).not.toMatch(diacritic);
+  });
+  it("vi has no English stop word", () => {
+    for (const [k, v] of values(vi.meta)) expect(v, k).not.toMatch(stopWords);
+  });
+});

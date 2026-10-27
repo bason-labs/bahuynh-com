@@ -175,4 +175,10 @@ export const vi = {
     open: "Mở phòng hát",
     film: "Xem lại video",
   },
+  meta: {
+    title: "BS Kara — Đêm nay hát gì?",
+    description:
+      "Karaoke cho cả nhóm. TV là sân khấu, điện thoại là micro và điều khiển, MC AI dẫn từng bài. Mở phòng trong mười giây, không cần cài đặt.",
+    imageAlt: "Micro chrome dưới đèn sân khấu, chữ BS KARA phía sau và dòng \"Karaoke cho cả nhóm.\"",
+  },
 } as const;
