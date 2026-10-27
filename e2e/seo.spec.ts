@@ -69,3 +69,15 @@ for (const [path, want] of Object.entries(pages)) {
     });
   });
 }
+
+for (const lang of ["vi", "en"]) {
+  test(`/og/${lang}.png is a 1200x630 PNG`, async ({ request }) => {
+    const res = await request.get(`/og/${lang}.png`);
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toBe("image/png");
+    const bytes = await res.body();
+    expect(bytes.subarray(1, 4).toString("latin1")).toBe("PNG");
+    expect(bytes.readUInt32BE(16)).toBe(1200);
+    expect(bytes.readUInt32BE(20)).toBe(630);
+  });
+}

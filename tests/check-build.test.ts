@@ -9,7 +9,7 @@ const script = resolve("scripts/check-build.mjs");
 const marker = (JSON.parse(readFileSync("budget.json", "utf8")) as { threeMarker: string }).threeMarker;
 const dirs: string[] = [];
 
-type Files = Record<string, string | Buffer>;
+type Files = Record<string, string | Buffer | null>;
 
 const H2S = {
   vi: ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"],
@@ -33,11 +33,14 @@ function run(files: Files = {}, heads: { vi?: string; en?: string } = {}) {
   const all: Files = {
     "out/index.html": page("vi", "Karaoke cho cả nhóm.", heads.vi),
     "out/en/index.html": page("en", "Karaoke for the whole group.", heads.en),
+    "out/og/vi.png": "png",
+    "out/og/en.png": "png",
     "out/404.html": '<html><body><a href="/">vi</a><a href="/en/">en</a></body></html>',
     "out/_next/static/chunks/a.js": "console.log(1)",
     ...files,
   };
   for (const [path, data] of Object.entries(all)) {
+    if (data === null) continue;
     mkdirSync(dirname(join(cwd, path)), { recursive: true });
     writeFileSync(join(cwd, path), data);
   }
@@ -52,6 +55,15 @@ afterEach(() => {
 const script1 = '<script src="/_next/static/chunks/a.js" async=""></script>';
 
 describe("check-build", () => {
+  it("fails when a share image is missing or over 300 kB", () => {
+    const missing = run({ "out/og/en.png": null });
+    expect(missing.code).not.toBe(0);
+    expect(missing.out).toContain("out/og/en.png is missing");
+    const r = run({ "out/og/vi.png": Buffer.alloc(300 * 1024 + 1), "out/og/en.png": "png" });
+    expect(r.code).not.toBe(0);
+    expect(r.out).toContain("out/og/vi.png 300.0 kB exceeds 300 kB");
+  });
+
   it("fails when a page lacks its canonical or an alternate", () => {
     const r = run({
       "out/index.html": "<!DOCTYPE html><html lang=\"vi\"><head></head><body><h1>Karaoke cho cả nhóm.</h1>" + H2S.vi.map((h) => `<h2>${h}</h2>`).join("") + "</body></html>",

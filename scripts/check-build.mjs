@@ -128,6 +128,13 @@ if (existsSync("out")) {
   }
 }
 
+// REQ-LAND-036.AC-3: the share images ticket 24's head points to (AD-8: each at most 300 kB).
+for (const lang of ["vi", "en"]) {
+  const file = `out/og/${lang}.png`;
+  if (!existsSync(file)) errors.push(`${file} is missing`);
+  else if (statSync(file).size > 300 * 1024) errors.push(`${file} ${fmt(statSync(file).size)} exceeds 300 kB`);
+}
+
 if (!existsSync("out/404.html")) {
   errors.push("out/404.html is missing");
 } else {
