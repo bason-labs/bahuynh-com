@@ -285,7 +285,10 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       await page.waitForLoadState("networkidle");
       const requests: string[] = [];
-      page.on("request", (r) => requests.push(r.url()));
+      // a request that sends something; the site's own static chunks (the lazy 3D mic) only fetch code
+      page.on("request", (r) => {
+        if (!new URL(r.url()).pathname.startsWith("/_next/static/")) requests.push(r.url());
+      });
       const stored = () =>
         page.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]));
       const before = await stored();
