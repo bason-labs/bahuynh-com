@@ -318,7 +318,7 @@ test("scroll: the offsets follow the scroll distance up to one viewport and retu
 });
 
 test("glow: going live eases in over about 0.5 s and going idle eases back out, never reversing", FAST, async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(420_000);
   await openFollow(page);
   await page.evaluate(() => {
     const w = window as unknown as { samples: { frame: number; glow: number }[] };
@@ -350,13 +350,13 @@ test("glow: going live eases in over about 0.5 s and going idle eases back out, 
   expect((await samples()).every((a) => a.glow === 0)).toBe(true);
   await toggle();
   await expect(hero(page)).toHaveAttribute("data-live", "true");
-  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 30_000 }).toBe(1);
+  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 180_000 }).toBe(1); // about 83 frames: minutes at the runner's ~4 frames a second
   const up = await frames(true);
   expect(up).toBeGreaterThanOrEqual(24);
   expect(up).toBeLessThanOrEqual(42);
   await toggle();
   await expect(hero(page)).toHaveAttribute("data-live", "false");
-  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 30_000 }).toBe(0);
+  await expect.poll(async () => (await samples()).at(-1)!.glow, { timeout: 180_000 }).toBe(0);
   const down = await frames(false);
   expect(down).toBeGreaterThanOrEqual(24);
   expect(down).toBeLessThanOrEqual(42);
