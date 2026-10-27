@@ -47,9 +47,15 @@ for (const lang of ["vi", "en"] as const) {
       await expect(film).toHaveAttribute("data-running", "true");
       await page.waitForTimeout(800);
       await checkAxe(page);
+      // Pause before the jump: a slow axe run lets the film run on, so the jump target is the next
+      // chapter start after wherever it stopped (paused, the timecode then stays put).
+      await film.getByRole("button", { name: lang === "vi" ? "Dừng" : "Pause", exact: true }).click();
+      await expect(film).toHaveAttribute("data-running", "false");
+      const [, mm, ss] = ((await page.locator("[data-timecode]").textContent()) ?? "").split(":").map(Number);
+      const next = [6, 12, 18, 24, 30, 0].find((t) => t === 0 || t > mm * 60 + ss)!;
       await film.focus();
       await page.keyboard.press("ArrowRight");
-      await expect(page.locator("[data-timecode]")).toHaveText("0:00:06");
+      await expect(page.locator("[data-timecode]")).toHaveText(`0:00:${String(next).padStart(2, "0")}`);
       await checkAxe(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });

@@ -401,6 +401,7 @@ for (const lang of ["vi", "en"] as const) {
     test("lyric sits above the h1 on a phone and right of the copy on desktop", async ({ page }) => {
       await page.setViewportSize(VIEWPORTS.mobile);
       await gotoPage(page, lang);
+      await skipTransitions(page); // end-state layout check, not the fade
       const hero = page.locator("header#top");
       await page.mouse.click(tapAt.mobile.x, tapAt.mobile.y);
       await expect(hero).toHaveAttribute("data-live", "true");
