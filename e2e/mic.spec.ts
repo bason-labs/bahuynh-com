@@ -68,7 +68,7 @@ test("500 dust particles rise and wrap from top to bottom", async ({ page }) => 
 });
 
 test("the idle turn is 0.0025 rad per rendered frame, the height bobs by 0.06 and the loop stops off screen", async ({ page }) => {
-  test.setTimeout(45_000);
+  test.setTimeout(75_000);
   await page.setViewportSize(SMALL_DESKTOP);
   await gotoPage(page, "en");
   await expectGl(page, "3d");
@@ -84,11 +84,18 @@ test("the idle turn is 0.0025 rad per rendered frame, the height bobs by 0.06 an
   expect(Math.abs(perFrame - 0.0025)).toBeLessThanOrEqual(0.0025 * 0.2);
   expect(b.yaw - a.yaw).toBeCloseTo(b.idleYaw - a.idleYaw, 6);
   // A bob period is 7.85 s.
+  // Sample until both the top and the bottom of the bob have been rendered: on a slow CI runner
+  // frames are sparse, so a fixed sample window can miss the peaks.
   const heights: number[] = [];
-  for (let i = 0; i < 90; i++) {
-    heights.push((await readPose(page)).height);
-    await page.waitForTimeout(100);
-  }
+  await expect
+    .poll(
+      async () => {
+        heights.push((await readPose(page)).height);
+        return Math.min(Math.max(...heights) - a.restHeight, a.restHeight - Math.min(...heights));
+      },
+      { timeout: 30_000, intervals: [100] },
+    )
+    .toBeGreaterThan(0.05);
   expect(Math.max(...heights) - a.restHeight).toBeGreaterThan(0.05);
   expect(Math.max(...heights) - a.restHeight).toBeLessThanOrEqual(0.0601);
   expect(a.restHeight - Math.min(...heights)).toBeGreaterThan(0.05);
