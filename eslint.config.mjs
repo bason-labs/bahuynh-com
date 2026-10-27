@@ -23,7 +23,7 @@ const libPatterns = [
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores(["out/**", "out-film/**", ".next/**", "node_modules/**", "next-env.d.ts"]),
+  globalIgnores(["out/**", ".next/**", "node_modules/**", "next-env.d.ts"]),
   {
     files: ["src/**/*.{ts,tsx}"],
     rules: { "no-restricted-imports": ["error", { patterns: [threeBan] }] },

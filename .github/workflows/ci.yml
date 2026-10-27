@@ -9,7 +9,6 @@ on:
 permissions:
   contents: read
 
-# e2e (Playwright) runs locally; each PR carries its result as evidence (owner, 2026-10-27).
 jobs:
   check:
     runs-on: ubuntu-latest

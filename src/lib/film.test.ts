@@ -1,7 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { filmConfig as fixture } from "../../e2e/fixtures/film.config";
 import { filmConfig } from "../features/landing/film.config";
-import { resolveFilm } from "./film";
+import { type FilmConfig, resolveFilm } from "./film";
+
+/** A configured film, as `film.config.ts` would hold once the real file is swapped in. */
+const fixture: FilmConfig = {
+  src: "/film/film.webm",
+  poster: "/film/poster.jpg",
+  chapters: [
+    { start: 0, name: { vi: "Mở đầu", en: "Opening" } },
+    { start: 5, name: { vi: "Giữa phim", en: "Middle" } },
+    { start: 14, name: { vi: "Kết", en: "Ending" } },
+  ],
+  captions: { vi: "/film/vi.vtt", en: "/film/en.vtt" },
+  copy: {
+    vi: {
+      titleLead: "Phim thật,",
+      titleAccent: "một đêm.",
+      lede: "Đoạn phim thật thay cho bản dựng nháp.",
+      posterLead: "Xem phim",
+      posterAccent: "thật.",
+    },
+    en: {
+      titleLead: "The real film,",
+      titleAccent: "one night.",
+      lede: "The real footage in place of the rough cut.",
+      posterLead: "Watch the",
+      posterAccent: "real film.",
+    },
+  },
+};
 
 describe("resolveFilm", () => {
   it("ships no film in this build", () => {
