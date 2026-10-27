@@ -122,7 +122,7 @@ for (const lang of ["vi", "en"] as const) {
     await page.setViewportSize(VIEWPORTS.desktop);
     await page.clock.install();
     await gotoPage(page, lang);
-    await page.clock.pauseAt(new Date(Date.now() + 60_000));
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000); // page time: it may be ahead after a slow load
     const frame = page.locator("[data-film]");
     const timecode = page.locator("[data-timecode]");
     await frame.getByRole("button", { name: c.play, exact: true }).click();
