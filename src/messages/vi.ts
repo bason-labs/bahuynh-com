@@ -108,4 +108,15 @@ export const vi = {
       { song: "Đêm Nay Hát", who: "Minh" },
     ],
   },
+  together: {
+    kicker: "/ Cùng nhau",
+    titleLead: "Không ai hát",
+    titleAccent: "một mình.",
+    lede: "Người cầm micro, người chọn bài, người vỗ tay. Mỗi điện thoại trong phòng là một phần của buổi hát. Chạm vào đám đông thử xem.",
+    steps: [
+      { title: "Mở phòng trên TV", text: "Smart TV, máy chiếu hay laptop nối màn hình. Mở trình duyệt là xong." },
+      { title: "Mọi người quét mã", text: "Mã QR trên TV. Không cần cài ứng dụng, không cần tài khoản để hát." },
+      { title: "Thêm bài, cầm mic", text: "Ai cũng thêm bài từ điện thoại. MC AI giới thiệu, TV phát, cả phòng hát." },
+    ],
+  },
 } as const;
