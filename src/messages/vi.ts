@@ -167,4 +167,12 @@ export const vi = {
       text: "Smart TV, Android box, máy chiếu. Video nét, tự xử lý máy yếu.",
     },
   },
+  final: {
+    kicker: "/ Bắt đầu",
+    titleLead: "Đêm nay",
+    titleAccent: "hát gì?",
+    lede: "Mở BS Kara trên TV, gửi mã cho cả nhóm, và cầm micro lên.",
+    open: "Mở phòng hát",
+    film: "Xem lại video",
+  },
 } as const;

@@ -11,8 +11,13 @@ const dirs: string[] = [];
 
 type Files = Record<string, string | Buffer>;
 
-const page = (lang: string, h1: string, head = "") =>
-  `<!DOCTYPE html><html lang="${lang}"><head>${head}</head><body><h1>${h1}</h1></body></html>`;
+const H2S = {
+  vi: ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"],
+  en: ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"],
+} as const;
+
+const page = (lang: "vi" | "en", h1: string, head = "", h2s: readonly string[] = H2S[lang]) =>
+  `<!DOCTYPE html><html lang="${lang}"><head>${head}</head><body><h1>${h1}</h1>${h2s.map((h) => `<h2>${h}</h2>`).join("")}</body></html>`;
 
 /** Writes a temporary out/ and runs check-build in it. */
 function run(files: Files = {}, heads: { vi?: string; en?: string } = {}) {
@@ -40,6 +45,12 @@ afterEach(() => {
 const script1 = '<script src="/_next/static/chunks/a.js" async=""></script>';
 
 describe("check-build", () => {
+  it("fails when a chapter h2 is missing from the raw HTML", () => {
+    const r = run({ "out/en/index.html": page("en", "Karaoke for the whole group.", "", H2S.en.slice(0, 4)) });
+    expect(r.code).not.toBe(0);
+    expect(r.out).toContain('out/en/index.html lacks the h2 "What are we singing tonight?"');
+  });
+
   it("passes on a small valid output", () => {
     const r = run({}, { vi: script1, en: script1 });
     expect(r.out).toContain("check-build: ok");

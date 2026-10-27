@@ -39,6 +39,26 @@
   color: var(--spot);
 }
 
+.centered {
+  display: block;
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.centered .kicker {
+  justify-content: center;
+}
+
+.centered h2 {
+  max-width: none;
+  margin: 0 auto;
+  font-size: clamp(52px, 10vw, 170px);
+}
+
+.centered .lede {
+  margin: 22px auto 0;
+}
+
 .lede {
   max-width: 520px;
   color: var(--muted);

@@ -79,3 +79,16 @@ for (const [lang, parts] of [
     await expect(section.locator("[data-bars] i")).toHaveCount(28);
   });
 }
+
+for (const [lang, headings, cta] of [
+  ["vi", ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"], "Mở phòng hát"],
+  ["en", ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"], "Open a room"],
+] as const) {
+  test(`the five chapter headings and the closing link render without JavaScript on ${lang}`, async ({ page }) => {
+    await gotoPage(page, lang);
+    await expect(page.getByRole("heading", { level: 2 })).toHaveText([...headings]);
+    const final = page.locator("section#batdau");
+    await expect(final.getByRole("link", { name: cta, exact: true })).toHaveAttribute("href", "https://kara.bahuynh.com");
+    await expect(final.getByRole("heading", { level: 2 })).toBeVisible();
+  });
+}

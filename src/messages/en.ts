@@ -169,4 +169,12 @@ export const en: Messages = {
       text: "Smart TV, Android box, projector. Sharp video, and it copes with slow devices.",
     },
   },
+  final: {
+    kicker: "/ Start",
+    titleLead: "What are we",
+    titleAccent: "singing tonight?",
+    lede: "Open BS Kara on the TV, send the code to the group, and pick up the mic.",
+    open: "Open a room",
+    film: "Watch again",
+  },
 };
