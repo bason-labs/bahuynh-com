@@ -105,6 +105,30 @@
   flex-wrap: wrap;
 }
 
+/* The phone glows (crowd canvas) and the spot cone sit behind these texts: a blurred dark backing keeps them at 4.5:1 or more. */
+.meta,
+.hint,
+.lyric,
+.cta :global(.btn):not(:global(.solid)) {
+  background: rgba(9, 9, 10, 0.96);
+  box-shadow: 0 0 0 6px rgba(9, 9, 10, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+/* The idle ON AIR box keeps its transparent background (hero.spec.ts): its backing is a layer behind the text. */
+.onair::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(9, 9, 10, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.hero[data-live="true"] .onair::before {
+  display: none;
+}
+
 .meta {
   display: flex;
   gap: 18px;
