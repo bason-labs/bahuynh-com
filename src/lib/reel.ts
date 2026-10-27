@@ -21,3 +21,8 @@ export function reelStart(target: number, n: number): number {
 export function rowShift(i: number): number {
   return i - 1;
 }
+
+/** The queue with `row` on top, keeping at most `max` rows. */
+export function pushQueue<T>(rows: readonly T[], row: T, max = 3): T[] {
+  return [row, ...rows].slice(0, max);
+}

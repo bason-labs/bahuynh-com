@@ -82,6 +82,9 @@ export const en: Messages = {
     room: "Room 7108",
     empty: "Queue is empty",
     queueLabel: "Queue",
+    live: "Now singing",
+    you: "You",
+    announce: "Now singing: {song}",
     songs: [
       "Cụng Ly Nào",
       "Mây Lang Thang",
@@ -91,6 +94,16 @@ export const en: Messages = {
       "Mưa Phố Nhỏ",
       "Hát Tiếp Đi",
       "Phố Đêm",
+    ],
+    lyrics: [
+      "Nâng ly lên cười thật to nào",
+      "Mây trôi qua phố, gió đưa em về",
+      "Đèn đã lên rồi, mình về nhà thôi",
+      "Nắng qua hiên, mình ngồi bên nhau",
+      "Đêm nay hát, hát cho nhau nghe",
+      "Mưa rơi trên phố nhỏ quen",
+      "Hát tiếp đi, đừng để đêm tàn",
+      "Phố đêm sáng đèn, ta hát vang",
     ],
     queue: [
       { song: "Mây Lang Thang", who: "Lan" },
