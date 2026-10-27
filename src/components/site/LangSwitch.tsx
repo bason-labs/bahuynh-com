@@ -19,7 +19,7 @@ export function LangSwitch({ locale }: { locale: Locale }) {
             {content(option)}
           </button>
         ) : (
-          <a key={option} href={localePath(otherLocale(locale))} lang={option} hrefLang={option}>
+          <a key={option} href={localePath(otherLocale(locale))} lang={option} hrefLang={option} data-lang-link>
             {content(option)}
           </a>
         ),

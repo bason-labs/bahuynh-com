@@ -1,4 +1,4 @@
-import { Footer, Grain, SiteNav } from "@/components/site";
+import { Footer, Grain, ScrollRail, SiteNav } from "@/components/site";
 import type { Locale } from "@/lib/i18n";
 import { getMessages } from "@/messages";
 import { Features } from "./sections/Features";
@@ -22,6 +22,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
     <>
       <Grain />
       <SiteNav locale={locale} links={links} />
+      <ScrollRail />
       <main>
         <Hero locale={locale} />
         <Marquee locale={locale} />
