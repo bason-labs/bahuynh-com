@@ -40,7 +40,13 @@ Set these in the repository settings (Secrets and variables, then Actions):
 | `DEPLOY_HOST` | variable | the server's host name or IP |
 | `DEPLOY_KNOWN_HOSTS` | variable | the server's `known_hosts` line(s), for example from `ssh-keyscan <host>` checked against the server |
 
-Without the secret, the workflow still pushes the image, and the deploy job is skipped.
+Without the secret, the workflow still pushes the image, and the deploy job is skipped. It runs
+only for `main`; a manual run from another branch does nothing.
+
+The GHCR package is not public, so the server must be logged in to ghcr.io (for example
+`docker login ghcr.io` with a token that can read packages) before `docker pull` works. If the
+`image` job fails to push with a permission error, open the package settings and, under Manage
+Actions access, give this repository the Write role.
 
 Try the image locally:
 

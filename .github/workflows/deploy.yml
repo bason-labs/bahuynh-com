@@ -19,6 +19,8 @@ env:
 
 jobs:
   image:
+    # A manual run from another branch must not push :latest or roll it out.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     permissions:
@@ -86,7 +88,7 @@ jobs:
           while [ "$SECONDS" -lt "$deadline" ]; do
             if curl -fsS --max-time 10 https://bahuynh.com/ | grep -q '<html lang="vi"' &&
               [ "$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' https://bahuynh.com/slide/)" = 200 ]; then
-              echo "bahuynh.com serves $TAG"
+              echo "bahuynh.com is healthy after rolling out $TAG"
               exit 0
             fi
             sleep 5
