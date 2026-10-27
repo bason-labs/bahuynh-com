@@ -1,5 +1,9 @@
 import type { Page } from "@playwright/test";
-import { expect, gotoPage, test, VIEWPORTS } from "./support";
+import { expectGl, withoutWebGl } from "./mic";
+import { expect, gotoPage, skipTransitions, test, VIEWPORTS } from "./support";
+
+// These specs cover the hero's DOM, CSS mic, live state and crowd; the 3D mic has its own specs (mic, degrade).
+test.beforeEach(({ page }) => withoutWebGl(page));
 
 const copy = {
   vi: {
@@ -33,7 +37,7 @@ for (const lang of ["vi", "en"] as const) {
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
       await expect(hero).toHaveAttribute("data-live", "false");
-      await expect(hero).toHaveAttribute("data-gl", "loading");
+      await expectGl(page, "fallback");
       const h1 = hero.getByRole("heading", { level: 1 });
       await expect(h1).toHaveText(c.h1);
       const em = h1.locator("em");
@@ -214,15 +218,16 @@ for (const lang of ["vi", "en"] as const) {
       const box = hero.getByText(c.label, { exact: true }).locator("..");
       const hint = hero.getByText(c.hint, { exact: true }).locator("..");
       const cone = hero.locator('div[aria-hidden="true"]').first();
+      await expect(box).toHaveCSS("transition-duration", "0.3s");
+      await expect(hint).toHaveCSS("transition-duration", "0.4s");
+      await skipTransitions(page);
       await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
       await expect(hero).toHaveAttribute("data-live", "true");
       await expect(box).toHaveCSS("background-color", RED);
       await expect(box).toHaveCSS("border-top-color", RED);
       await expect(box).toHaveCSS("color", "rgb(9, 9, 10)");
       await expect(box).toHaveCSS("box-shadow", "rgba(255, 74, 43, 0.45) 0px 0px 40px 0px");
-      await expect(box).toHaveCSS("transition-duration", "0.3s");
       await expect(hint).toHaveCSS("opacity", "0");
-      await expect(hint).toHaveCSS("transition-duration", "0.4s");
       await expect(cone).toHaveCSS("opacity", "1");
       await expect(cone).toHaveCSS("filter", "saturate(1.6) hue-rotate(-12deg)");
       await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
@@ -291,10 +296,14 @@ for (const lang of ["vi", "en"] as const) {
     });
 
     test("each toggle makes three rings on the grille that are gone after 2.4 s", async ({ page }) => {
+      // ring removal is a 2.4 s timer: drive it with the fake clock so a slow CI machine cannot stretch it
+      await page.clock.install();
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
       const rings = hero.locator("i");
+      // fake time also runs every animation frame; hide the crowd canvas so its loop stops
+      await hero.locator("canvas[data-heat]").evaluate((c) => ((c as HTMLElement).style.display = "none"));
       for (const expected of ["true", "false"]) {
         await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
         await expect(hero).toHaveAttribute("data-live", expected);
@@ -326,7 +335,8 @@ for (const lang of ["vi", "en"] as const) {
           expect(Math.abs(i.cx - (mic.x + 60))).toBeLessThanOrEqual(2);
           expect(Math.abs(i.cy - (mic.y + 50))).toBeLessThanOrEqual(2);
         }
-        await expect(rings).toHaveCount(0, { timeout: 3500 });
+        await page.clock.runFor(2_400);
+        await expect(rings).toHaveCount(0);
       }
     });
 
@@ -336,9 +346,10 @@ for (const lang of ["vi", "en"] as const) {
       const hero = page.locator("header#top");
       const lyric = hero.locator('div[aria-hidden="true"]').last();
       await expect(lyric).toHaveCSS("opacity", "0");
+      await expect(lyric).toHaveCSS("transition-duration", "0.4s");
+      await skipTransitions(page);
       await page.mouse.click(tapAt.desktop.x, tapAt.desktop.y);
       await expect(lyric).toHaveCSS("opacity", "1");
-      await expect(lyric).toHaveCSS("transition-duration", "0.4s");
       const label = lyric.getByText(l.label, { exact: true });
       await expect(label).toHaveCSS("color", RED);
       await expect(label).toHaveCSS("font-family", /mono/i);
@@ -354,6 +365,7 @@ for (const lang of ["vi", "en"] as const) {
       await page.clock.install();
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
+      await skipTransitions(page);
       await page.clock.pauseAt(Date.now() + 60_000);
       const hero = page.locator("header#top");
       // fake time also runs every animation frame; hide the crowd canvas so its loop stops and the test stays fast
@@ -389,6 +401,7 @@ for (const lang of ["vi", "en"] as const) {
     test("lyric sits above the h1 on a phone and right of the copy on desktop", async ({ page }) => {
       await page.setViewportSize(VIEWPORTS.mobile);
       await gotoPage(page, lang);
+      await skipTransitions(page); // end-state layout check, not the fade
       const hero = page.locator("header#top");
       await page.mouse.click(tapAt.mobile.x, tapAt.mobile.y);
       await expect(hero).toHaveAttribute("data-live", "true");
@@ -432,7 +445,7 @@ test.describe("touch swipe on the mic", () => {
 
 /** Alpha-weighted mean colour of a row inside the glow, above the silhouettes and phones. */
 const crowdGlow = (page: Page) =>
-  page.locator("header#top canvas").evaluate((canvas: HTMLCanvasElement) => {
+  page.locator("header#top canvas[data-heat]").evaluate((canvas: HTMLCanvasElement) => {
     const w = canvas.width;
     const d = canvas.getContext("2d")!.getImageData(0, Math.floor(canvas.height * 0.45), w, 1).data;
     const sum = { r: 0, g: 0, b: 0, a: 0 };
@@ -451,7 +464,7 @@ for (const lang of ["vi", "en"] as const) {
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
-      const canvas = hero.locator("canvas");
+      const canvas = hero.locator("canvas[data-heat]");
       await expect(canvas).toHaveCount(1);
       await expect(canvas).toHaveAttribute("aria-hidden", "true");
       await expect(canvas).toHaveCSS("pointer-events", "none");
@@ -472,7 +485,7 @@ for (const lang of ["vi", "en"] as const) {
       const hero = page.locator("header#top");
       await expect(hero).toHaveAttribute("data-live", "true");
       const above = await hero.evaluate((h) => {
-        const canvas = h.querySelector("canvas")!;
+        const canvas = h.querySelector("canvas[data-heat]")!;
         // The hero's direct child that holds `el`, and its z-index.
         const top = (el: Element) => {
           let n = el;
@@ -496,7 +509,7 @@ for (const lang of ["vi", "en"] as const) {
       await page.setViewportSize(VIEWPORTS.desktop);
       await gotoPage(page, lang);
       const hero = page.locator("header#top");
-      const canvas = hero.locator("canvas");
+      const canvas = hero.locator("canvas[data-heat]");
       await expect(canvas).toHaveAttribute("data-heat", "0.00");
       await expect.poll(() => crowdGlow(page).then((p) => p.a)).toBeGreaterThan(0);
       const idle = await crowdGlow(page);
