@@ -63,3 +63,44 @@ export async function skipTransitions(page: Page) {
     content: "*, *::before, *::after { transition-duration: 0s !important; transition-delay: 0s !important; }",
   });
 }
+
+type Probe = "accent" | "dim" | "radius";
+
+/** Names every element that matches `probe` as `parent > element`, each `tag.class` with the CSS-module hash removed. */
+async function listElements(page: Page, probe: Probe): Promise<string[]> {
+  return page.evaluate((mode) => {
+    const ACCENT = "rgb(255, 74, 43)";
+    const DIM = "rgb(85, 83, 79)";
+    const tag = (el: Element) =>
+      el.tagName.toLowerCase() + [...el.classList].map((c) => "." + c.replace(/^_?[A-Za-z0-9-]{6}_/, "")).join("");
+    const name = (el: Element) => (el.parentElement ? `${tag(el.parentElement)} > ` : "") + tag(el);
+    const found: string[] = [];
+    for (const el of document.querySelectorAll("body, body *")) {
+      const cs = getComputedStyle(el);
+      const props: string[] = [];
+      const ownText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim() !== "");
+      if (mode === "dim") {
+        if (ownText && cs.color === DIM) props.push("color");
+      } else if (mode === "radius") {
+        if (["TopLeft", "TopRight", "BottomRight", "BottomLeft"].some((c) => cs[`border${c}Radius` as "borderTopLeftRadius"] !== "0px")) props.push("radius");
+      } else {
+        if (ownText && cs.color === ACCENT) props.push("color");
+        if (cs.backgroundColor === ACCENT) props.push("background");
+        const sides = ["Top", "Right", "Bottom", "Left"] as const;
+        if (sides.some((s) => cs[`border${s}Color`] === ACCENT && cs[`border${s}Width`] !== "0px" && cs[`border${s}Style`] !== "none")) props.push("border");
+        if (cs.outlineColor === ACCENT && cs.outlineStyle !== "none" && cs.outlineWidth !== "0px") props.push("outline");
+      }
+      if (props.length) found.push(`${name(el)} [${props.join(",")}]`);
+    }
+    return [...new Set(found)];
+  }, probe);
+}
+
+/** Elements whose own text, background, border or outline computes to `rgb(255, 74, 43)`, as `parent > element [properties]`. */
+export const accentElements = (page: Page) => listElements(page, "accent");
+
+/** Elements with own text in the dim token `rgb(85, 83, 79)`. */
+export const dimTextElements = (page: Page) => listElements(page, "dim");
+
+/** Elements with a non-zero border radius on any corner. */
+export const roundedElements = (page: Page) => listElements(page, "radius");
