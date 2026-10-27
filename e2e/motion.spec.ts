@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { expectGl, readPose, SMALL_DESKTOP, throttleFrames, withoutWebGl } from "./mic";
 import { expect, gotoPage, test, VIEWPORTS } from "./support";
 
 const names = { vi: "Dừng chuyển động", en: "Pause motion" } as const;
@@ -179,19 +180,23 @@ async function expectStillLive(page: Page) {
 test.describe("hero live state under reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
   test("no transition, no rings, the whole lyric sung and kept", async ({ page }) => {
+    await withoutWebGl(page);
     await gotoPage(page, "vi");
     await expectStillLive(page);
   });
 });
 
 test("hero live state with the pause toggle pressed", async ({ page }) => {
+  await withoutWebGl(page);
   await gotoPage(page, "en");
   await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
   await expectStillLive(page);
 });
 
-const countCrowdFrames = (page: Page) =>
-  page.addInitScript(() => {
+// The 2D frame counter and the live state are checked on the CSS mic, so WebGL is switched off here.
+const countCrowdFrames = async (page: Page) => {
+  await withoutWebGl(page);
+  await page.addInitScript(() => {
     const w = window as unknown as { __crowdFrames: number };
     w.__crowdFrames = 0;
     const clear = CanvasRenderingContext2D.prototype.clearRect;
@@ -200,13 +205,14 @@ const countCrowdFrames = (page: Page) =>
       return clear.apply(this, args);
     };
   });
+};
 const crowdFrames = (page: Page) => page.evaluate(() => (window as unknown as { __crowdFrames: number }).__crowdFrames);
-const crowdImage = (page: Page) => page.locator("header#top canvas").evaluate((c: HTMLCanvasElement) => c.toDataURL());
+const crowdImage = (page: Page) => page.locator("header#top canvas[data-heat]").evaluate((c: HTMLCanvasElement) => c.toDataURL());
 
 async function expectStillCrowd(page: Page) {
   await page.setViewportSize(VIEWPORTS.desktop);
   await gotoPage(page, "vi");
-  const canvas = page.locator("header#top canvas");
+  const canvas = page.locator("header#top canvas[data-heat]");
   await expect(canvas).toHaveAttribute("data-heat", "0.00");
   await page.waitForTimeout(300);
   const idle = await crowdImage(page);
@@ -244,7 +250,7 @@ test("hero crowd animates, then stands still with the pause toggle pressed", asy
 });
 
 async function expectStillCrowdPaused(page: Page) {
-  const canvas = page.locator("header#top canvas");
+  const canvas = page.locator("header#top canvas[data-heat]");
   await page.waitForTimeout(300);
   const idle = await crowdImage(page);
   const frames = await crowdFrames(page);
@@ -500,4 +506,78 @@ test("pressing the pause toggle shows every pending block at once", async ({ pag
   await expect(page.locator("section#quay > .wrap > *").first()).toHaveAttribute("data-reveal", "pending");
   await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
   await expectBlocksShown(page);
+});
+
+const framesStill = async (page: Page) => {
+  await expectGl(page, "3d");
+  const canvas = page.locator("header#top canvas:not([data-heat])");
+  await expect(canvas).toHaveAttribute("data-running", "false");
+  const before = await readPose(page);
+  expect(before.dustCount).toBe(0);
+  await page.waitForTimeout(10_000);
+  expect(await readPose(page)).toEqual(before);
+};
+
+test.describe("3D mic under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("turns, bobs and draws no dust over 10 s", async ({ page }) => {
+    test.setTimeout(30_000);
+    await page.setViewportSize(SMALL_DESKTOP);
+    await gotoPage(page, "vi");
+    await framesStill(page);
+  });
+});
+
+test("3D mic stands still with the pause toggle pressed, and moves again unpressed", async ({ page }) => {
+  await throttleFrames(page);
+  test.setTimeout(30_000);
+  await page.setViewportSize(SMALL_DESKTOP);
+  await gotoPage(page, "en");
+  await expectGl(page, "3d");
+  const toggle = page.getByRole("navigation").getByRole("button", { name: names.en, exact: true });
+  await expect.poll(async () => (await readPose(page)).dustCount).toBe(500);
+  await toggle.click();
+  await framesStill(page);
+  await toggle.click();
+  await expect.poll(async () => (await readPose(page)).dustCount).toBe(500);
+  const turned = (await readPose(page)).idleYaw;
+  await expect.poll(async () => (await readPose(page)).idleYaw).toBeGreaterThan(turned);
+});
+
+test("3D mic ignores the pointer and the scroll with the pause toggle pressed, but a drag still spins it and live still glows", async ({ page }) => {
+  await throttleFrames(page);
+  test.setTimeout(30_000);
+  await page.setViewportSize({ width: 800, height: 700 });
+  await gotoPage(page, "en");
+  await expectGl(page, "3d");
+  await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
+  await expect.poll(async () => (await readPose(page)).dustCount).toBe(0);
+  const start = await readPose(page);
+  const box = (await page.locator("header#top").boundingBox())!;
+  const head = { x: start.rect.x + start.rect.width / 2, y: start.rect.y + start.rect.height / 2 };
+  const settle = () => page.evaluate(() => new Promise((done) => setTimeout(done, 400)));
+  await page.mouse.move(box.x + box.width - 1, box.y + box.height / 2);
+  await page.mouse.move(box.x + 1, box.y + 100);
+  await settle();
+  const pointed = await readPose(page);
+  expect([pointed.followYaw, pointed.followPitch]).toEqual([0, 0]);
+  expect(pointed.yaw).toBe(start.yaw);
+  await page.mouse.move(head.x, head.y);
+  await page.mouse.down();
+  await page.mouse.move(head.x + 100, head.y);
+  await page.mouse.up();
+  await expect.poll(async () => (await readPose(page)).dragYaw).toBeCloseTo(1, 1);
+  await expect.poll(async () => (await readPose(page)).yaw - start.yaw).toBeCloseTo(1, 1);
+  await page.evaluate(() => {
+    document.body.style.minHeight = "4000px";
+    window.scrollTo({ top: 900, behavior: "instant" });
+  });
+  await settle();
+  const scrolled = await readPose(page);
+  expect([scrolled.scrollYaw, scrolled.scrollPitch, scrolled.scrollLift]).toEqual([0, 0, 0]);
+  expect(scrolled.height).toBe(start.height);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.mouse.click(head.x, head.y);
+  await expect(page.locator("header#top")).toHaveAttribute("data-live", "true");
+  await expect.poll(async () => (await readPose(page)).glow).toBe(1);
 });
