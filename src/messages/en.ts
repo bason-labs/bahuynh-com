@@ -177,4 +177,10 @@ export const en: Messages = {
     open: "Open a room",
     film: "Watch again",
   },
+  meta: {
+    title: "BS Kara — What are we singing tonight?",
+    description:
+      "Karaoke for the whole group. The TV is the stage, phones are the mic and the remote, and an AI host introduces every song. A room is open in ten seconds, nothing to install.",
+    imageAlt: "A chrome microphone under a stage light, BS KARA behind it and the line \"Karaoke for the whole group.\"",
+  },
 };

@@ -15,12 +15,12 @@ const fmt = (bytes) => `${kb(bytes).toFixed(1)} kB`;
 const gz = (buf) => gzipSync(buf).length;
 
 const pages = [
-  { route: "/", file: "out/index.html", lang: "vi", h1: "Karaoke cho cả nhóm.", h2s: ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"] },
-  { route: "/en/", file: "out/en/index.html", lang: "en", h1: "Karaoke for the whole group.", h2s: ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"] },
+  { route: "/", file: "out/index.html", lang: "vi", canonical: "https://bahuynh.com/", h1: "Karaoke cho cả nhóm.", h2s: ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"] },
+  { route: "/en/", file: "out/en/index.html", lang: "en", canonical: "https://bahuynh.com/en/", h1: "Karaoke for the whole group.", h2s: ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"] },
 ];
 const errors = [];
 
-const attr = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
+const attr = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`, "i"))?.[1];
 const baseline = { initialJsGzKb: {}, htmlGzKb: {}, preloadFontKb: {}, micChunkGzKb: null };
 
 /** Scripts and fonts a page's HTML references, as out/ paths. */
@@ -40,7 +40,7 @@ function references(html) {
 }
 const outFile = (url) => join("out", decodeURIComponent(url.split(/[?#]/)[0]));
 
-for (const { route, file, lang, h1, h2s } of pages) {
+for (const { route, file, lang, canonical, h1, h2s } of pages) {
   if (!existsSync(file)) {
     errors.push(`${file} is missing`);
     continue;
@@ -48,6 +48,19 @@ for (const { route, file, lang, h1, h2s } of pages) {
   const html = readFileSync(file, "utf8");
   if (!html.includes(`<html lang="${lang}"`)) errors.push(`${file} lacks <html lang="${lang}"`);
   if (!html.replace(/<!--.*?-->|<\/?em>/g, "").includes(h1)) errors.push(`${file} lacks the h1 "${h1}"`);
+  // REQ-LAND-035: canonical plus the three alternates, each exactly once.
+  const links = [...html.matchAll(/<link\b[^>]*>/g)].map((m) => m[0]);
+  const wanted = [
+    ["canonical", { rel: "canonical" }, canonical],
+    ["hreflang vi", { rel: "alternate", hreflang: "vi" }, "https://bahuynh.com/"],
+    ["hreflang en", { rel: "alternate", hreflang: "en" }, "https://bahuynh.com/en/"],
+    ["hreflang x-default", { rel: "alternate", hreflang: "x-default" }, "https://bahuynh.com/"],
+  ];
+  for (const [name, match, href] of wanted) {
+    const found = links.filter((l) => Object.entries(match).every(([k, v]) => attr(l, k) === v));
+    if (found.length !== 1) errors.push(`${file} has ${found.length} ${name} links, expected 1`);
+    else if (attr(found[0], "href") !== href) errors.push(`${file} ${name} link points to ${attr(found[0], "href")}, expected ${href}`);
+  }
   const text = html.replace(/<!--.*?-->|<\/?em>/g, "");
   for (const h2 of h2s) if (!text.includes(`${h2}</h2>`)) errors.push(`${file} lacks the h2 "${h2}"`);
 

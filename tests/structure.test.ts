@@ -98,3 +98,17 @@ describe("real src/", () => {
     for (const f of findings.filter((f) => f.severity === "warn")) console.warn(`warn: ${f.rule} in ${f.path}`);
   });
 });
+
+describe("head metadata", () => {
+  const read = (p: string) => readFileSync(p, "utf8");
+  it("is produced on the server from the origin constant", () => {
+    for (const p of ["src/app/meta.ts", "src/app/(vi)/layout.tsx", "src/app/(en)/layout.tsx"]) {
+      expect(read(p), p).not.toMatch(/["']use client["']/);
+    }
+    const meta = read("src/app/meta.ts");
+    expect(meta).toContain("SITE_ORIGIN");
+    expect(meta).not.toMatch(/https?:\/\//);
+    expect(read("src/app/(vi)/layout.tsx")).toContain('buildMetadata("vi")');
+    expect(read("src/app/(en)/layout.tsx")).toContain('buildMetadata("en")');
+  });
+});

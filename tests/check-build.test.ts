@@ -16,8 +16,15 @@ const H2S = {
   en: ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"],
 } as const;
 
+const LINKS = {
+  vi: '<link rel="canonical" href="https://bahuynh.com/"/>',
+  en: '<link rel="canonical" href="https://bahuynh.com/en/"/>',
+} as const;
+const ALTERNATES =
+  '<link rel="alternate" hrefLang="vi" href="https://bahuynh.com/"/><link rel="alternate" hrefLang="en" href="https://bahuynh.com/en/"/><link rel="alternate" hrefLang="x-default" href="https://bahuynh.com/"/>';
+
 const page = (lang: "vi" | "en", h1: string, head = "", h2s: readonly string[] = H2S[lang]) =>
-  `<!DOCTYPE html><html lang="${lang}"><head>${head}</head><body><h1>${h1}</h1>${h2s.map((h) => `<h2>${h}</h2>`).join("")}</body></html>`;
+  `<!DOCTYPE html><html lang="${lang}"><head>${LINKS[lang]}${ALTERNATES}${head}</head><body><h1>${h1}</h1>${h2s.map((h) => `<h2>${h}</h2>`).join("")}</body></html>`;
 
 /** Writes a temporary out/ and runs check-build in it. */
 function run(files: Files = {}, heads: { vi?: string; en?: string } = {}) {
@@ -45,6 +52,24 @@ afterEach(() => {
 const script1 = '<script src="/_next/static/chunks/a.js" async=""></script>';
 
 describe("check-build", () => {
+  it("fails when a page lacks its canonical or an alternate", () => {
+    const r = run({
+      "out/index.html": "<!DOCTYPE html><html lang=\"vi\"><head></head><body><h1>Karaoke cho cả nhóm.</h1>" + H2S.vi.map((h) => `<h2>${h}</h2>`).join("") + "</body></html>",
+    });
+    expect(r.code).not.toBe(0);
+    expect(r.out).toContain("out/index.html has 0 canonical links, expected 1");
+    expect(r.out).toContain("out/index.html has 0 hreflang x-default links, expected 1");
+  });
+
+  it("fails when an alternate is duplicated or points elsewhere", () => {
+    const r = run({}, { en: '<link rel="alternate" hreflang="en" href="https://bahuynh.com/en/"/>' });
+    expect(r.out).toContain("out/en/index.html has 2 hreflang en links, expected 1");
+    const w = run({
+      "out/en/index.html": page("en", "Karaoke for the whole group.").replace('rel="canonical" href="https://bahuynh.com/en/"', 'rel="canonical" href="https://bahuynh.com/"'),
+    });
+    expect(w.out).toContain("out/en/index.html canonical link points to https://bahuynh.com/, expected https://bahuynh.com/en/");
+  });
+
   it("fails when a chapter h2 is missing from the raw HTML", () => {
     const r = run({ "out/en/index.html": page("en", "Karaoke for the whole group.", "", H2S.en.slice(0, 4)) });
     expect(r.code).not.toBe(0);
@@ -127,7 +152,7 @@ describe("check-build", () => {
   });
 
   it("allows kara.bahuynh.com and the site origin", () => {
-    const head = '<a href="https://kara.bahuynh.com/privacy">p</a><link rel="canonical" href="https://bahuynh.com/"/>';
+    const head = '<a href="https://kara.bahuynh.com/privacy">p</a><a href="https://bahuynh.com/x">x</a>';
     expect(run({}, { vi: head }).code).toBe(0);
   });
 });
