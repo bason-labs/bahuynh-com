@@ -37,7 +37,7 @@ for (const lang of ["vi", "en"] as const) {
     await page.clock.install();
     await page.setViewportSize(VIEWPORTS.desktop);
     await gotoPage(page, lang);
-    await page.clock.pauseAt(Date.now() + 500);
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 500); // page time: it may be ahead after a slow load
     const scene = page.locator("section#cungnhau [data-scene]");
     const tap = scene.getByRole("button", { name: reaction[lang].tap, exact: true });
     const count = scene.locator("[data-count]");
