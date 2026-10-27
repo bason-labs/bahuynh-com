@@ -52,7 +52,8 @@ const HERO_CROWD_COLORS: CrowdColors = {
 
 type Ring = { id: number; x: number; y: number; delay: number };
 
-export function HeroStage({ micLabel, children }: { micLabel: string; children: ReactNode }) {
+/** `children` is the stage (mic, wordmark, cone); `copy` follows the mic control in the DOM, so Tab reaches the mic before the hero buttons. */
+export function HeroStage({ micLabel, children, copy }: { micLabel: string; children: ReactNode; copy: ReactNode }) {
   const [live, setLive] = useState(false);
   const [gl, setGl] = useState<GlState>("loading");
   const [rings, setRings] = useState<Ring[]>([]);
@@ -170,6 +171,7 @@ export function HeroStage({ micLabel, children }: { micLabel: string; children: 
           onPointerCancel={onPointerEnd}
           onClick={onClick}
         />
+        {copy}
         {rings.map((r) => (
           <i
             key={r.id}

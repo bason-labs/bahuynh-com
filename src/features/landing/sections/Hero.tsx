@@ -9,12 +9,16 @@ import styles from "./hero.module.css";
 export function Hero({ locale }: { locale: Locale }) {
   const t = getMessages(locale).hero;
   return (
-    <HeroStage micLabel={t.micLabel}>
+    <HeroStage
+      micLabel={t.micLabel}
+      copy={
+        <div className={`${styles.copy} wrap`}>
+          <HeroCopy locale={locale} />
+          <HeroSide locale={locale} />
+        </div>
+      }
+    >
       <HeroMic locale={locale} />
-      <div className={`${styles.copy} wrap`}>
-        <HeroCopy locale={locale} />
-        <HeroSide locale={locale} />
-      </div>
     </HeroStage>
   );
 }
