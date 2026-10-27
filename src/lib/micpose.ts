@@ -12,6 +12,8 @@ const TAP_MAX_PX = 6;
 const SCROLL_YAW = 1.4;
 const SCROLL_PITCH = 0.25;
 const SCROLL_LIFT = 1.6;
+const GLOW_EASE = 0.08;
+const GLOW_SNAP = 0.001;
 const NARROW_MAX_WIDTH = 560;
 
 export type Pose = { yaw: number; pitch: number };
@@ -38,6 +40,12 @@ export function followTarget(nx: number, ny: number): Pose {
 /** Moves 6 % of the remaining distance per frame; `frames` keeps it frame-rate independent. */
 export function easeFollow(current: number, target: number, frames = 1): number {
   return current + (target - current) * (1 - Math.pow(1 - FOLLOW_EASE, frames));
+}
+
+/** Moves 8 % of the remaining distance per frame (90 % in about 0.47 s at 60 fps) and lands on the target when within 0.001. */
+export function easeGlow(current: number, target: number): number {
+  const next = current + (target - current) * GLOW_EASE;
+  return Math.abs(target - next) < GLOW_SNAP ? target : next;
 }
 
 export function dragDelta(dxCssPx: number): number {
