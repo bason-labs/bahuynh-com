@@ -1,3 +1,4 @@
+import { expectGl, readPose, throttleFrames, withoutWebGl } from "./mic";
 import { checkAxe, expect, gotoPage, skipTransitions, test, VIEWPORTS } from "./support";
 
 // Later specs import checkAxe from ./support; it is re-exported here for the ticket's interface.
@@ -21,6 +22,7 @@ for (const lang of ["vi", "en"] as const) {
     });
 
     test(`axe finds no violation on ${lang} at ${key} with the hero live`, async ({ page }) => {
+      await withoutWebGl(page);
       await page.setViewportSize(VIEWPORTS[key]);
       await gotoPage(page, lang);
       await skipTransitions(page);
@@ -45,9 +47,15 @@ for (const lang of ["vi", "en"] as const) {
       await expect(film).toHaveAttribute("data-running", "true");
       await page.waitForTimeout(800);
       await checkAxe(page);
+      // Pause before the jump: a slow axe run lets the film run on, so the jump target is the next
+      // chapter start after wherever it stopped (paused, the timecode then stays put).
+      await film.getByRole("button", { name: lang === "vi" ? "Dừng" : "Pause", exact: true }).click();
+      await expect(film).toHaveAttribute("data-running", "false");
+      const [, mm, ss] = ((await page.locator("[data-timecode]").textContent()) ?? "").split(":").map(Number);
+      const next = [6, 12, 18, 24, 30, 0].find((t) => t === 0 || t > mm * 60 + ss)!;
       await film.focus();
       await page.keyboard.press("ArrowRight");
-      await expect(page.locator("[data-timecode]")).toHaveText("0:00:06");
+      await expect(page.locator("[data-timecode]")).toHaveText(`0:00:${String(next).padStart(2, "0")}`);
       await checkAxe(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     });
@@ -70,6 +78,38 @@ for (const lang of ["vi", "en"] as const) {
       await page.clock.resume();
       await checkAxe(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    });
+  }
+}
+
+// Last, so the software-WebGL start-ups do not overlap the first tests of the other specs.
+for (const lang of ["vi", "en"] as const) {
+  for (const key of ["mobile", "tablet", "desktop"] as const) {
+    test(`axe finds no violation on ${lang} at ${key} with the 3D mic loaded`, async ({ page }) => {
+      await throttleFrames(page);
+      await page.setViewportSize(VIEWPORTS[key]);
+      await gotoPage(page, lang);
+      await expectGl(page, "3d");
+      await checkAxe(page);
+    });
+  }
+}
+
+// The live glow and its rings, with the 3D mic running.
+for (const lang of ["vi", "en"] as const) {
+  for (const key of ["mobile", "tablet", "desktop"] as const) {
+    test(`axe finds no violation on ${lang} at ${key} with the 3D mic live`, async ({ page }) => {
+      await throttleFrames(page);
+      await page.setViewportSize(VIEWPORTS[key]);
+      await gotoPage(page, lang);
+      await expectGl(page, "3d");
+      await skipTransitions(page);
+      const { rect } = await readPose(page);
+      await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      const hero = page.locator("header#top");
+      await expect(hero).toHaveAttribute("data-live", "true");
+      await expect(hero.locator("i")).toHaveCount(0, { timeout: 10_000 });
+      await checkAxe(page);
     });
   }
 }
