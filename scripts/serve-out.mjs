@@ -3,12 +3,14 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { gzipSync } from "node:zlib";
 
-const root = join(process.cwd(), "out");
+const dirArg = process.argv.indexOf("--dir");
+const dir = dirArg > 0 ? process.argv[dirArg + 1] : "out";
+const root = join(process.cwd(), dir);
 const portArg = process.argv.indexOf("--port");
 const port = portArg > 0 ? Number(process.argv[portArg + 1]) : 4173;
 
 if (!existsSync(root)) {
-  console.error("serve-out: out/ is missing, run pnpm build first");
+  console.error(`serve-out: ${dir}/ is missing, run pnpm ${dir === "out" ? "build" : "build:film-fixture"} first`);
   process.exit(1);
 }
 
@@ -24,6 +26,8 @@ const types = {
   ".jpg": "image/jpeg",
   ".ico": "image/x-icon",
   ".webp": "image/webp",
+  ".webm": "video/webm",
+  ".vtt": "text/vtt; charset=utf-8",
 };
 const compressible = /^(text\/|application\/json|image\/svg)/;
 
@@ -49,6 +53,21 @@ createServer((req, res) => {
         out["Content-Encoding"] = "gzip";
       }
     }
+    // Media elements ask for byte ranges.
+    const range = req.headers.range?.match(/^bytes=(\d*)-(\d*)$/);
+    if (range && status === 200 && !out["Content-Encoding"]) {
+      const start = range[1] === "" ? Math.max(body.length - Number(range[2]), 0) : Number(range[1]);
+      const end = range[1] === "" || range[2] === "" ? body.length - 1 : Math.min(Number(range[2]), body.length - 1);
+      if (start > end) {
+        res.writeHead(416, { "Content-Range": `bytes */${body.length}` });
+        res.end();
+        return;
+      }
+      out["Content-Range"] = `bytes ${start}-${end}/${body.length}`;
+      status = 206;
+      body = body.subarray(start, end + 1);
+    }
+    out["Accept-Ranges"] = "bytes";
     out["Content-Length"] = body.length;
     res.writeHead(status, out);
     res.end(req.method === "HEAD" ? undefined : body);

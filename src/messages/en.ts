@@ -46,6 +46,7 @@ export const en: Messages = {
     posterAccent: "singing tonight?",
     draft: "Rough cut",
     rec: "REC",
+    captionsLabel: "English",
     playVideo: "Play video",
     play: "Play",
     pause: "Pause",

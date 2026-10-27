@@ -12,6 +12,9 @@
     "test": "vitest run",
     "preview": "node scripts/serve-out.mjs --port 4173",
     "e2e": "playwright test",
+    "build:film-fixture": "node scripts/build-film-fixture.mjs",
+    "preview:film": "node scripts/serve-out.mjs --port 4174 --dir out-film",
+    "e2e:film": "playwright test --config playwright.film.config.ts",
     "perf:once": "node scripts/measure-lcp.mjs"
   },
   "dependencies": {

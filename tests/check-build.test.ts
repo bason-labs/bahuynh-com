@@ -65,6 +65,13 @@ describe("check-build", () => {
     expect(mod.out).toMatch(/\/en\/ initial JS/);
   });
 
+  it("fails when the film fixture is in the output", () => {
+    const files = run({ "out/film/film.webm": "x" });
+    expect(files.out).toContain("out/film exists");
+    const code = run({ "out/_next/static/chunks/a.js": 'f("/film/film.webm")' });
+    expect(code.out).toContain("a.js contains the film fixture config");
+  });
+
   it("fails when HTML is over the cap", () => {
     const r = run({ "out/index.html": page("vi", "Karaoke cho cả nhóm.", `<!--${randomBytes(60 * 1024).toString("hex")}-->`) });
     expect(r.out).toMatch(/\/ HTML \d+\.\d kB gz exceeds 50 kB/);

@@ -33,6 +33,9 @@ jobs:
       # No --with-deps: the ubuntu image already has the headless shell's libraries, and apt from
       # the runner's mirror once took 13 minutes.
       - run: pnpm exec playwright install chromium
+      # the configured-film path, against its own fixture build (ticket 11)
+      - run: pnpm build:film-fixture
+      - run: pnpm e2e:film
       - name: Measure LCP (warn)
         run: pnpm perf:once
         continue-on-error: true
