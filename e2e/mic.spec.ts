@@ -148,7 +148,8 @@ const FAST = { tag: "@fast" } as const;
 
 const mouseTo = (page: Page, x: number, y: number) => page.mouse.move(x, y);
 const heroBox = async (page: Page) => (await hero(page).boundingBox())!;
-const frameIs = (page: Page, atLeast: number) => expect.poll(async () => (await readPose(page)).frame, { timeout: 60_000 }).toBeGreaterThanOrEqual(atLeast);
+// The CI runner's software WebGL can draw as few as 4 frames a second, so frame-count waits get minutes, not seconds.
+const frameIs = (page: Page, atLeast: number) => expect.poll(async () => (await readPose(page)).frame, { timeout: 180_000 }).toBeGreaterThanOrEqual(atLeast);
 /** Waits until the animation loop has drawn `n` more frames than `since`. */
 const afterFrames = (page: Page, since: number, n: number) => frameIs(page, since + n);
 
@@ -166,7 +167,7 @@ async function openFollow(page: Page, lang: "vi" | "en" = "en") {
 }
 
 test("follow: resting at the hero centre leaves 0 offset; the edges give +-0.3 and +-0.175", FAST, async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(480_000);
   await openFollow(page);
   const box = await heroBox(page);
   const cx = box.x + box.width / 2;
@@ -187,7 +188,7 @@ test("follow: resting at the hero centre leaves 0 offset; the edges give +-0.3 a
 });
 
 test("follow: covers 90 % of a jump in 38 frames and holds its value when the pointer leaves", FAST, async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(360_000);
   await openFollow(page);
   const box = await heroBox(page);
   await mouseTo(page, box.x + box.width / 2, box.y + box.height / 2);
@@ -233,7 +234,7 @@ test("drag: 100 px right turns the mic 1.0 rad, 100 px left turns it back, and t
 
 for (const [name, dx, sign] of [["right", 20, 1], ["left", -20, -1]] as const) {
   test(`drag: after releasing a 20 px ${name} move the spin slows by 0.94 a frame to under 0.001 rad`, FAST, async ({ page }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(180_000);
     await openFollow(page);
     const { x, y } = await micPoint(page);
     await mouseTo(page, x, y);
