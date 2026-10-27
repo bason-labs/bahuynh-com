@@ -464,7 +464,8 @@ for (const lang of ["vi", "en"] as const) {
 
     test("the large play button leaves the tab order while playing; Tab leaves the frame", async ({ page }) => {
       await page.setViewportSize(VIEWPORTS.desktop);
-      await gotoPage(page, lang);
+      // hold the film clock: a slow machine must not reach the 6 s shot swap while focus is checked
+      await openWithClock(page, lang);
       const frame = film(page);
       await frame.getByRole("button", { name: c.playVideo, exact: true }).click();
       await expect(frame).toHaveAttribute("data-running", "true");

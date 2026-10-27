@@ -552,3 +552,32 @@ for (const how of ["system setting", "pause toggle"] as const) {
     }
   });
 }
+
+const chapterBlocks = (page: Page) => page.locator(":is(#xem, #quay, #cungnhau, #tinhnang, #batdau) > .wrap > *");
+
+async function expectBlocksShown(page: Page) {
+  const blocks = chapterBlocks(page);
+  await expect(blocks).toHaveCount(10);
+  for (const block of await blocks.all()) {
+    await expect(block).not.toHaveAttribute("data-reveal", /.*/);
+    await expect(block).toHaveCSS("opacity", "1");
+    await expect(block).toHaveCSS("transform", "none");
+  }
+}
+
+test.describe("chapter reveal under reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+  test("every block is visible at once with no offset", async ({ page }) => {
+    await page.setViewportSize(VIEWPORTS.desktop);
+    await gotoPage(page, "vi");
+    await expectBlocksShown(page);
+  });
+});
+
+test("pressing the pause toggle shows every pending block at once", async ({ page }) => {
+  await page.setViewportSize(VIEWPORTS.desktop);
+  await gotoPage(page, "en");
+  await expect(page.locator("section#quay > .wrap > *").first()).toHaveAttribute("data-reveal", "pending");
+  await page.getByRole("navigation").getByRole("button", { name: names.en, exact: true }).click();
+  await expectBlocksShown(page);
+});
