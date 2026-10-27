@@ -310,6 +310,7 @@
     justify-self: start;
     text-align: left;
     min-height: 60px;
+    max-width: none;
   }
 
   .hint {
