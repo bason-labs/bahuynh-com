@@ -190,13 +190,17 @@ for (const [name, breakFile] of fails) {
   baseTest(`when ${name}, pressing play plays the animatic (vi)`, async ({ page }) => {
     const errors = collectErrors(page);
     await breakFile(page);
+    // hold the clock so the animatic cannot run past its first shot before the checks on a slow runner
+    await page.clock.install();
     await gotoPage(page, "vi");
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 500);
     await film(page).getByRole("button", { name: copy.vi.playVideo, exact: true }).click();
     await baseExpect(film(page)).toHaveAttribute("data-source", "animatic");
     await baseExpect(film(page)).toHaveAttribute("data-running", "true");
     await baseExpect(video(page)).toHaveCount(0);
     await baseExpect(film(page).locator('[data-on="true"]')).toContainText(copy.vi.firstShot);
     await baseExpect(film(page).getByText(copy.vi.draft, { exact: true })).toBeVisible();
+    await page.clock.runFor(1_100);
     await baseExpect(timecode(page)).not.toHaveText("0:00:00");
     await baseExpect(chapterButtons(page)).toHaveCount(6);
     // The only console errors are the browser's own report of the failed file request.
