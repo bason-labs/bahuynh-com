@@ -14,7 +14,7 @@ export const filmConfig: FilmConfig | null = {
       { start: 4, name: "Quét mã" },
       { start: 9, name: "Chọn bài" },
       { start: 21, name: "MC dẫn" },
-      { start: 30, name: "Cả phòng hát" },
+      { start: 31, name: "Cả phòng hát" },
       { start: 38, name: "Điểm số" },
     ],
     captions: "/film/bs-kara-walkthrough-vi.vtt",
