@@ -12,8 +12,8 @@ const dirs: string[] = [];
 type Files = Record<string, string | Buffer | null>;
 
 const H2S = {
-  vi: ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"],
-  en: ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"],
+  vi: ["Một đêm hát, 46 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"],
+  en: ["One night of singing, 51 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"],
 } as const;
 
 const LINKS = {

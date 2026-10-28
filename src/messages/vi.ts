@@ -26,7 +26,7 @@ export const vi = {
     titleAccent: "cả nhóm.",
     lede: "TV là sân khấu, điện thoại là micro và điều khiển, MC AI dẫn từng bài. Mở phòng trong mười giây, không cần cài đặt.",
     open: "Mở phòng hát",
-    film: "▶ Xem 36 giây",
+    film: "▶ Xem 46 giây",
     platforms: "Web · TV · Máy chiếu",
     free: "Miễn phí để bắt đầu",
     hint: "Kéo để xoay · chạm để bật micro",

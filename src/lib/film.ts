@@ -11,14 +11,17 @@ export type FilmCopy = {
   posterAccent: string;
 };
 
-/** One configuration entry for a real film file (REQ-LAND-022); all URLs are on the site's own origin. */
-export type FilmConfig = {
+/** One language's cut of the real film; all URLs are on the site's own origin. */
+export type FilmVersion = {
   src: string;
   poster: string;
-  chapters: { start: number; name: Pair<string> }[];
-  captions: Pair<string>;
-  copy: Pair<FilmCopy>;
+  chapters: { start: number; name: string }[];
+  captions: string;
+  copy: FilmCopy;
 };
+
+/** One configuration entry for the real film (REQ-LAND-022): a cut per language, each with its own file. */
+export type FilmConfig = Pair<FilmVersion>;
 
 export type ResolvedFilm = {
   src: string;
@@ -32,12 +35,13 @@ export type ResolvedFilm = {
 /** The configured film for `locale`, or null where none is configured (the animatic plays). */
 export function resolveFilm(config: FilmConfig | null, locale: Locale): ResolvedFilm | null {
   if (!config) return null;
+  const film = config[locale];
   return {
-    src: config.src,
-    poster: config.poster,
-    starts: config.chapters.map((c) => c.start),
-    names: config.chapters.map((c) => c.name[locale]),
-    captions: config.captions[locale],
-    copy: config.copy[locale],
+    src: film.src,
+    poster: film.poster,
+    starts: film.chapters.map((c) => c.start),
+    names: film.chapters.map((c) => c.name),
+    captions: film.captions,
+    copy: film.copy,
   };
 }

@@ -15,8 +15,8 @@ const fmt = (bytes) => `${kb(bytes).toFixed(1)} kB`;
 const gz = (buf) => gzipSync(buf).length;
 
 const pages = [
-  { route: "/", file: "out/index.html", lang: "vi", canonical: "https://bahuynh.com/", h1: "Karaoke cho cả nhóm.", h2s: ["Một đêm hát, 36 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"] },
-  { route: "/en/", file: "out/en/index.html", lang: "en", canonical: "https://bahuynh.com/en/", h1: "Karaoke for the whole group.", h2s: ["One night of singing, 36 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"] },
+  { route: "/", file: "out/index.html", lang: "vi", canonical: "https://bahuynh.com/", h1: "Karaoke cho cả nhóm.", h2s: ["Một đêm hát, 46 giây.", "Chưa biết hát gì? Quay.", "Không ai hát một mình.", "Mọi thứ một đêm hát cần.", "Đêm nay hát gì?"] },
+  { route: "/en/", file: "out/en/index.html", lang: "en", canonical: "https://bahuynh.com/en/", h1: "Karaoke for the whole group.", h2s: ["One night of singing, 51 seconds.", "Nothing to sing? Spin.", "Nobody sings alone.", "Everything a night out needs.", "What are we singing tonight?"] },
 ];
 const errors = [];
 
