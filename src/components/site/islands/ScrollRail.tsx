@@ -52,8 +52,14 @@ export function ScrollRail({ locale }: { locale: Locale }) {
       window.scrollTo({ top: restoreTop(position, sectionTop, section.offsetHeight), behavior: "instant" });
     }
 
+    function langHref(active: number) {
+      return active === 0 ? langBase : `${langBase}#${otherIds[active]}`;
+    }
+
     function remember() {
       const position = scrollPosition(tops(), sections.map((el) => el?.offsetHeight ?? 0), window.innerHeight);
+      // Set the hash here too: the scroll frame that updates it may not have run yet.
+      langLink?.setAttribute("href", langHref(position.index));
       try {
         sessionStorage.setItem(POSITION_KEY, JSON.stringify(position));
       } catch {
@@ -69,7 +75,7 @@ export function ScrollRail({ locale }: { locale: Locale }) {
         if (link.dataset.navLink === current) link.setAttribute("aria-current", "true");
         else link.removeAttribute("aria-current");
       });
-      if (langLink) langLink.setAttribute("href", active === 0 ? langBase : `${langBase}#${otherIds[active]}`);
+      if (langLink) langLink.setAttribute("href", langHref(active));
       const railEl = rail.current;
       if (railEl && marker.current) {
         const maxScroll = html.scrollHeight - window.innerHeight;
