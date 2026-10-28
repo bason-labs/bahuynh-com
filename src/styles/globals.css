@@ -9,6 +9,10 @@ html {
   background: var(--bg);
   color: var(--fg);
   scroll-padding-top: 64px;
+}
+
+/* Smooth only once the page has been placed (ScrollRail), so a page opened at a hash never animates from the top. */
+html[data-smooth] {
   scroll-behavior: smooth;
 }
 

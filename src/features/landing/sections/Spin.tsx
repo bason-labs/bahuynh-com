@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import { sectionId } from "@/lib/sections";
 import { getMessages } from "@/messages";
 import { Reveal } from "../islands/Reveal";
 import { SpinReel } from "../islands/SpinReel";
@@ -8,7 +9,7 @@ import chapter from "./chapter.module.css";
 export function Spin({ locale }: { locale: Locale }) {
   const t = getMessages(locale).spin;
   return (
-    <section className={chapter.section} id="quay">
+    <section className={chapter.section} id={sectionId(locale, 2)}>
       <div className="wrap">
         <Reveal>
           <ChapterHead number="02" kicker={t.kicker} titleLead={t.titleLead} titleAccent={t.titleAccent} lede={t.lede} />

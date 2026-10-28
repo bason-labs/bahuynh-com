@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n";
 import { COUNTER_START } from "@/lib/reaction";
+import { sectionId } from "@/lib/sections";
 import { getMessages } from "@/messages";
 import { Reveal } from "../islands/Reveal";
 import { TogetherScene } from "../islands/Together";
@@ -10,7 +11,7 @@ import styles from "./together.module.css";
 export function Together({ locale }: { locale: Locale }) {
   const t = getMessages(locale).together;
   return (
-    <section className={chapter.section} id="cungnhau">
+    <section className={chapter.section} id={sectionId(locale, 3)}>
       <div className="wrap">
         <Reveal>
           <ChapterHead number="03" kicker={t.kicker} titleLead={t.titleLead} titleAccent={t.titleAccent} lede={t.lede} />

@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import { sectionId } from "@/lib/sections";
 import { APP_URL } from "@/lib/site";
 import { getMessages } from "@/messages";
 import styles from "./hero.module.css";
@@ -15,7 +16,7 @@ export function HeroCopy({ locale }: { locale: Locale }) {
         <a className="btn solid" href={APP_URL}>
           {t.open}
         </a>
-        <a className="btn" href="#xem">
+        <a className="btn" href={`#${sectionId(locale, 1)}`}>
           {t.film}
         </a>
       </div>

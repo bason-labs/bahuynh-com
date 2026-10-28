@@ -1,6 +1,7 @@
 import { CHAPTER_STARTS, formatChapterTime } from "@/lib/chapters";
 import { resolveFilm } from "@/lib/film";
 import type { Locale } from "@/lib/i18n";
+import { sectionId } from "@/lib/sections";
 import { getMessages } from "@/messages";
 import { filmConfig } from "../film.config";
 import { FilmPlayer } from "../islands/FilmPlayer";
@@ -13,7 +14,7 @@ export function Film({ locale }: { locale: Locale }) {
   const film = resolveFilm(filmConfig, locale);
   const head = film?.copy ?? t;
   return (
-    <section className={chapter.section} id="xem">
+    <section className={chapter.section} id={sectionId(locale, 1)}>
       <div className="wrap">
         <Reveal>
           <ChapterHead

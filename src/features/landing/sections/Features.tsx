@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import { sectionId } from "@/lib/sections";
 import { getMessages } from "@/messages";
 import { Reveal } from "../islands/Reveal";
 import { ChapterHead } from "./ChapterHead";
@@ -31,7 +32,7 @@ function Card({ label, number, title, text, children }: CardProps) {
 export function Features({ locale }: { locale: Locale }) {
   const t = getMessages(locale).features;
   return (
-    <section className={chapter.section} id="tinhnang">
+    <section className={chapter.section} id={sectionId(locale, 4)}>
       <div className="wrap">
         <Reveal>
           <ChapterHead number="04" kicker={t.kicker} titleLead={t.titleLead} titleAccent={t.titleAccent} lede={t.lede} />
